@@ -2,19 +2,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Shield, Zap, Globe, Users, CheckCircle, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
-import heroImage from "@/assets/hero-legal-tech.jpg";
+import SpaceBackground from "@/components/SpaceBackground";
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-transparent relative">
       {/* Hero Section */}
       <section className="legal-section gradient-hero text-primary-foreground relative overflow-hidden">
-        <div className="absolute inset-0 z-0">
-          <img 
-            src={heroImage} 
-            alt="AI-powered legal technology platform for intellectual property protection"
-            className="w-full h-full object-cover opacity-20"
-          />
+        <div className="absolute inset-0 z-0 opacity-30">
+          <div className="w-full h-full bg-gradient-to-br from-primary/20 to-transparent"></div>
         </div>
         <div className="legal-container relative z-10">
           <div className="text-center">
