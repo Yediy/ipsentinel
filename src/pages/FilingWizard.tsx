@@ -7,11 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Shield, ArrowLeft, ArrowRight, Lightbulb, Building, Palette, Code, Music, FileImage } from "lucide-react";
+import { Shield, ArrowLeft, ArrowRight, Lightbulb, Building, Palette, Code, Music, FileImage, Check, CreditCard } from "lucide-react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const FilingWizard = () => {
   const [step, setStep] = useState(1);
+  const [selectedPlan, setSelectedPlan] = useState("basic");
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [formData, setFormData] = useState({
     creationType: "",
     regions: [],
@@ -70,6 +74,67 @@ const FilingWizard = () => {
         ? prev.regions.filter(r => r !== regionId)
         : [...prev.regions, regionId]
     }));
+  };
+
+  const plans = [
+    {
+      id: "basic",
+      name: "Basic Plan",
+      price: 49,
+      description: "AI Analysis Only",
+      features: [
+        "AI-powered IP analysis",
+        "Protection recommendations",
+        "Digital report delivery",
+        "Basic filing guidance"
+      ]
+    },
+    {
+      id: "review",
+      name: "Review Plan", 
+      price: 129,
+      description: "AI Analysis + Legal Review",
+      features: [
+        "Everything in Basic Plan",
+        "Expert attorney review",
+        "Filing strategy consultation",
+        "Priority support",
+        "Risk assessment"
+      ],
+      popular: true
+    },
+    {
+      id: "bundle",
+      name: "Bundle Plan",
+      price: 199, 
+      description: "Complete Protection Package",
+      features: [
+        "Everything in Review Plan",
+        "Full filing preparation",
+        "Government fee guidance",
+        "1-year IP monitoring",
+        "Ongoing legal support"
+      ]
+    }
+  ];
+
+  const handlePayment = async () => {
+    setIsProcessingPayment(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-payment', {
+        body: { plan: selectedPlan }
+      });
+      
+      if (error) throw error;
+      
+      // Open Stripe checkout in a new tab
+      window.open(data.url, '_blank');
+    } catch (error) {
+      console.error('Payment error:', error);
+      toast.error('Payment failed. Please try again.');
+    } finally {
+      setIsProcessingPayment(false);
+    }
   };
 
   return (
@@ -418,32 +483,70 @@ const FilingWizard = () => {
                   </div>
                 </div>
 
+                {/* Plan Selection */}
+                <div className="mb-6">
+                  <h4 className="font-semibold text-lg mb-4">Choose Your Plan</h4>
+                  <div className="grid md:grid-cols-3 gap-4">
+                    {plans.map((plan) => (
+                      <div
+                        key={plan.id}
+                        className={`relative border-2 rounded-lg p-4 cursor-pointer transition-all hover:shadow-card ${
+                          selectedPlan === plan.id 
+                            ? 'border-primary bg-primary/5' 
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                        onClick={() => setSelectedPlan(plan.id)}
+                      >
+                        {plan.popular && (
+                          <div className="absolute -top-2 left-1/2 transform -translate-x-1/2">
+                            <Badge className="bg-primary text-primary-foreground">Most Popular</Badge>
+                          </div>
+                        )}
+                        <div className="text-center mb-4">
+                          <h5 className="font-semibold text-lg">{plan.name}</h5>
+                          <div className="text-2xl font-bold text-primary">${plan.price}</div>
+                          <p className="text-sm text-muted-foreground">{plan.description}</p>
+                        </div>
+                        <ul className="space-y-2 text-sm">
+                          {plan.features.map((feature, index) => (
+                            <li key={index} className="flex items-start gap-2">
+                              <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                              <span>{feature}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        {selectedPlan === plan.id && (
+                          <div className="absolute top-3 right-3">
+                            <div className="w-4 h-4 bg-primary rounded-full flex items-center justify-center">
+                              <div className="w-2 h-2 bg-white rounded-full"></div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="border rounded-lg p-6 mb-6">
-                  <h4 className="font-semibold text-lg mb-4">Cost Breakdown</h4>
+                  <h4 className="font-semibold text-lg mb-4">Selected Plan Summary</h4>
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span>IPSentinel Service Fee</span>
-                      <span className="font-semibold">$129</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Government Filing Fees</span>
-                      <span className="font-semibold">$320</span>
+                      <span>{plans.find(p => p.id === selectedPlan)?.name}</span>
+                      <span className="font-semibold">${plans.find(p => p.id === selectedPlan)?.price}</span>
                     </div>
                     <div className="border-t pt-2 flex justify-between text-lg font-bold">
                       <span>Total</span>
-                      <span className="text-primary">$449</span>
+                      <span className="text-primary">${plans.find(p => p.id === selectedPlan)?.price}</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="bg-muted rounded-lg p-4 mb-6">
-                  <h4 className="font-semibold mb-2">What's included:</h4>
+                  <h4 className="font-semibold mb-2">What's included in {plans.find(p => p.id === selectedPlan)?.name}:</h4>
                   <ul className="text-sm space-y-1">
-                    <li>• AI-generated filing documents</li>
-                    <li>• USPTO compliance review</li>
-                    <li>• Attorney review before submission</li>
-                    <li>• Filing status tracking</li>
-                    <li>• 1-year IP monitoring</li>
+                    {plans.find(p => p.id === selectedPlan)?.features.map((feature, index) => (
+                      <li key={index}>• {feature}</li>
+                    ))}
                   </ul>
                 </div>
 
@@ -452,9 +555,19 @@ const FilingWizard = () => {
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Previous
                   </Button>
-                  <Button className="px-8">
-                    Proceed to Payment
-                    <ArrowRight className="ml-2 h-4 w-4" />
+                  <Button 
+                    className="px-8" 
+                    onClick={handlePayment}
+                    disabled={isProcessingPayment}
+                  >
+                    {isProcessingPayment ? (
+                      <>Processing...</>
+                    ) : (
+                      <>
+                        <CreditCard className="mr-2 h-4 w-4" />
+                        Proceed to Payment
+                      </>
+                    )}
                   </Button>
                 </div>
               </CardContent>
