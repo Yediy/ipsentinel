@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,8 +16,9 @@ serve(async (req) => {
   try {
     console.log("Create payment function called");
     
-    const { plan } = await req.json();
+    const { plan, filingData, contactEmail } = await req.json();
     console.log("Plan requested:", plan);
+    console.log("Filing data:", filingData);
 
     // Validate plan and get pricing
     const planPricing = {
@@ -32,6 +34,35 @@ serve(async (req) => {
     const selectedPlan = planPricing[plan];
     console.log("Selected plan:", selectedPlan);
 
+    // Create Supabase client with service role for database operations
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") || "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
+    );
+
+    // Create filing record first
+    const { data: filing, error: filingError } = await supabase
+      .from("filings")
+      .insert({
+        contact_email: contactEmail,
+        type: filingData.type,
+        country: filingData.country || 'US',
+        title: filingData.title,
+        problem: filingData.problem,
+        solution: filingData.solution,
+        components: filingData.components,
+        status: 'pending_payment'
+      })
+      .select()
+      .single();
+
+    if (filingError) {
+      console.error("Error creating filing:", filingError);
+      throw new Error("Failed to create filing record");
+    }
+
+    console.log("Created filing:", filing.id);
+
     // Initialize Stripe
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2023-10-16",
@@ -39,6 +70,8 @@ serve(async (req) => {
 
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
+      client_reference_id: filing.id, // Link session to filing
+      customer_email: contactEmail,
       line_items: [
         {
           price_data: {
@@ -54,7 +87,22 @@ serve(async (req) => {
       mode: "payment",
       success_url: `${req.headers.get("origin")}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.get("origin")}/payment-canceled`,
+      metadata: {
+        filing_id: filing.id,
+        plan: plan
+      }
     });
+
+    // Create payment record
+    await supabase
+      .from("payments")
+      .insert({
+        filing_id: filing.id,
+        plan: plan,
+        amount: selectedPlan.amount,
+        stripe_session_id: session.id,
+        status: 'pending'
+      });
 
     console.log("Stripe session created:", session.id);
 

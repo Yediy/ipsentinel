@@ -19,6 +19,7 @@ const FilingWizard = () => {
   const [formData, setFormData] = useState({
     creationType: "",
     regions: [],
+    email: "",
     title: "",
     description: "",
     problemSolved: "",
@@ -122,7 +123,18 @@ const FilingWizard = () => {
     setIsProcessingPayment(true);
     try {
       const { data, error } = await supabase.functions.invoke('create-payment', {
-        body: { plan: selectedPlan }
+        body: { 
+          plan: selectedPlan,
+          filingData: {
+            type: formData.creationType,
+            country: formData.regions[0] || 'US', // Use first selected region
+            title: formData.title || formData.brandName,
+            problem: formData.problemSolved || formData.brandCategory,
+            solution: formData.description || formData.keyFeatures,
+            components: formData.workType ? [formData.workType] : []
+          },
+          contactEmail: formData.email
+        }
       });
       
       if (error) throw error;
@@ -300,6 +312,18 @@ const FilingWizard = () => {
               </CardHeader>
               <CardContent className="p-8">
                 <div className="space-y-6">
+                  <div>
+                    <Label htmlFor="email" className="text-base font-semibold">Email Address</Label>
+                    <Input 
+                      id="email"
+                      type="email"
+                      placeholder="your@email.com"
+                      value={formData.email}
+                      onChange={(e) => updateFormData('email', e.target.value)}
+                      className="mt-2"
+                      required
+                    />
+                  </div>
                   {formData.creationType === 'invention' && (
                     <>
                       <div>
