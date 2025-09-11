@@ -13,6 +13,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import PatentInterviewWizard from "@/components/patent/PatentInterviewWizard";
 import PatentReviewPanel from "@/components/patent/PatentReviewPanel";
+import TrademarkInterviewWizard from "@/components/trademark/TrademarkInterviewWizard";
+import CopyrightInterviewWizard from "@/components/copyright/CopyrightInterviewWizard";
 
 interface PatentData {
   email: string;
@@ -25,6 +27,43 @@ interface PatentData {
   howItWorks: string;
   priorArt: string;
   inventors: string;
+  commercialUse: string;
+}
+
+interface TrademarkData {
+  email: string;
+  markName: string;
+  markType: string;
+  businessDescription: string;
+  goodsServices: string;
+  useInCommerce: string;
+  firstUseDate: string;
+  intendedUse: string;
+  logo?: string;
+  slogan?: string;
+  colors?: string;
+  similarMarks: string;
+  marketingChannels: string;
+  targetAudience: string;
+}
+
+interface CopyrightData {
+  email: string;
+  workTitle: string;
+  workType: string;
+  workDescription: string;
+  authorName: string;
+  creationDate: string;
+  publicationDate: string;
+  publicationStatus: string;
+  copyrightOwner: string;
+  workForHire: string;
+  previousRegistration: string;
+  derivativeWork: string;
+  workCategory: string;
+  fileUploaded?: boolean;
+  fileName?: string;
+  registrationPurpose: string;
   commercialUse: string;
 }
 
@@ -42,8 +81,10 @@ const FilingWizard = () => {
   const [selectedPlan, setSelectedPlan] = useState("review");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [patentData, setPatentData] = useState<PatentData | null>(null);
+  const [trademarkData, setTrademarkData] = useState<TrademarkData | null>(null);
+  const [copyrightData, setCopyrightData] = useState<CopyrightData | null>(null);
   const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
-  const [wizardMode, setWizardMode] = useState<'select' | 'patent-interview' | 'patent-review' | 'payment'>('select');
+  const [wizardMode, setWizardMode] = useState<'select' | 'patent-interview' | 'patent-review' | 'trademark-interview' | 'copyright-interview' | 'payment'>('select');
   const [formData, setFormData] = useState({
     creationType: "",
     regions: [],
@@ -111,6 +152,10 @@ const FilingWizard = () => {
   const handleNext = () => {
     if (formData.creationType === 'patent') {
       setWizardMode('patent-interview');
+    } else if (formData.creationType === 'brand') {
+      setWizardMode('trademark-interview');
+    } else if (formData.creationType === 'creative') {
+      setWizardMode('copyright-interview');
     } else if (step < 4) {
       setStep(step + 1);
     }
@@ -124,6 +169,16 @@ const FilingWizard = () => {
   const handlePatentReviewComplete = (data: PatentData, content: GeneratedContent) => {
     setPatentData(data);
     setGeneratedContent(content);
+    setWizardMode('payment');
+  };
+
+  const handleTrademarkInterviewComplete = (data: TrademarkData) => {
+    setTrademarkData(data);
+    setWizardMode('payment');
+  };
+
+  const handleCopyrightInterviewComplete = (data: CopyrightData) => {
+    setCopyrightData(data);
     setWizardMode('payment');
   };
 
@@ -202,6 +257,26 @@ const FilingWizard = () => {
           components: patentData.components.split(',').map(c => c.trim()),
           generated_content: generatedContent
         };
+      } else if (trademarkData) {
+        // Use trademark interview data  
+        filingData = {
+          type: 'trademark',
+          country: 'US',
+          title: trademarkData.markName,
+          problem: trademarkData.businessDescription,
+          solution: trademarkData.goodsServices,
+          components: [trademarkData.markType]
+        };
+      } else if (copyrightData) {
+        // Use copyright interview data
+        filingData = {
+          type: 'copyright',
+          country: 'US', 
+          title: copyrightData.workTitle,
+          problem: copyrightData.workDescription,
+          solution: copyrightData.registrationPurpose,
+          components: [copyrightData.workType]
+        };
       } else {
         // Use legacy form data
         filingData = {
@@ -218,7 +293,7 @@ const FilingWizard = () => {
         body: { 
           plan: selectedPlan,
           filingData,
-          contactEmail: patentData?.email || formData.email
+          contactEmail: patentData?.email || trademarkData?.email || copyrightData?.email || formData.email
         }
       });
       
@@ -242,6 +317,16 @@ const FilingWizard = () => {
   // Render patent review panel
   if (wizardMode === 'patent-review' && patentData) {
     return <PatentReviewPanel patentData={patentData} onProceedToPayment={handlePatentReviewComplete} />;
+  }
+
+  // Render trademark interview wizard
+  if (wizardMode === 'trademark-interview') {
+    return <TrademarkInterviewWizard onComplete={handleTrademarkInterviewComplete} />;
+  }
+
+  // Render copyright interview wizard
+  if (wizardMode === 'copyright-interview') {
+    return <CopyrightInterviewWizard onComplete={handleCopyrightInterviewComplete} />;
   }
 
   return (
@@ -337,13 +422,45 @@ const FilingWizard = () => {
                   </div>
                 )}
                 
+                {formData.creationType === 'brand' && (
+                  <div className="mt-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
+                    <div className="flex items-start space-x-3">
+                      <Building className="h-5 w-5 text-primary mt-0.5" />
+                      <div>
+                        <h4 className="font-semibold text-primary mb-1">Trademark Interview Process</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Our AI will guide you through trademark requirements, perform conflict searches, 
+                          and generate your USPTO application with proper classifications.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {formData.creationType === 'creative' && (
+                  <div className="mt-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
+                    <div className="flex items-start space-x-3">
+                      <Palette className="h-5 w-5 text-primary mt-0.5" />
+                      <div>
+                        <h4 className="font-semibold text-primary mb-1">Copyright Interview Process</h4>
+                        <p className="text-sm text-muted-foreground">
+                          We'll collect details about your creative work, help with classification, 
+                          and prepare your copyright registration forms.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="flex justify-end mt-8">
                   <Button 
                     onClick={handleNext}
                     disabled={!formData.creationType}
                     className="px-8"
                   >
-                    {formData.creationType === 'patent' ? 'Start Patent Interview' : 'Continue'}
+                    {formData.creationType === 'patent' ? 'Start Patent Interview' : 
+                     formData.creationType === 'brand' ? 'Start Trademark Interview' :
+                     formData.creationType === 'creative' ? 'Start Copyright Interview' : 'Continue'}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </div>
@@ -587,12 +704,20 @@ const FilingWizard = () => {
                 <CardTitle className="text-2xl text-center text-legal-dark">
                   {wizardMode === 'payment' && patentData ? 
                     `Choose Your Plan for "${patentData.inventionTitle}"` :
+                   wizardMode === 'payment' && trademarkData ?
+                    `Choose Your Plan for "${trademarkData.markName}"` :
+                   wizardMode === 'payment' && copyrightData ?
+                    `Choose Your Plan for "${copyrightData.workTitle}"` :
                     'Choose Your Protection Plan'
                   }
                 </CardTitle>
                 <p className="text-center text-muted-foreground">
                   {wizardMode === 'payment' && patentData ?
                     'Your patent application is ready. Select a plan to proceed with filing.' :
+                   wizardMode === 'payment' && trademarkData ?
+                    'Your trademark application details are complete. Choose your filing plan.' :
+                   wizardMode === 'payment' && copyrightData ?
+                    'Your copyright registration is ready. Select your service level.' :
                     'Select the level of service that best fits your needs'
                   }
                 </p>
