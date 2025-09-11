@@ -14,6 +14,95 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_filing_sessions: {
+        Row: {
+          ai_model_used: string | null
+          completion_status: string | null
+          conversation_log: Json
+          created_at: string
+          current_step: string | null
+          filing_id: string
+          id: string
+          session_type: string
+          total_tokens_used: number | null
+          updated_at: string
+        }
+        Insert: {
+          ai_model_used?: string | null
+          completion_status?: string | null
+          conversation_log?: Json
+          created_at?: string
+          current_step?: string | null
+          filing_id: string
+          id?: string
+          session_type: string
+          total_tokens_used?: number | null
+          updated_at?: string
+        }
+        Update: {
+          ai_model_used?: string | null
+          completion_status?: string | null
+          conversation_log?: Json
+          created_at?: string
+          current_step?: string | null
+          filing_id?: string
+          id?: string
+          session_type?: string
+          total_tokens_used?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_filing_sessions_filing_id_fkey"
+            columns: ["filing_id"]
+            isOneToOne: false
+            referencedRelation: "filings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_prompt_templates: {
+        Row: {
+          created_at: string
+          id: string
+          input_variables: Json
+          is_active: boolean | null
+          model_parameters: Json | null
+          prompt_text: string
+          section_type: string
+          template_name: string
+          template_type: string
+          updated_at: string
+          version: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          input_variables?: Json
+          is_active?: boolean | null
+          model_parameters?: Json | null
+          prompt_text: string
+          section_type: string
+          template_name: string
+          template_type: string
+          updated_at?: string
+          version?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          input_variables?: Json
+          is_active?: boolean | null
+          model_parameters?: Json | null
+          prompt_text?: string
+          section_type?: string
+          template_name?: string
+          template_type?: string
+          updated_at?: string
+          version?: number | null
+        }
+        Relationships: []
+      }
       filing_documents: {
         Row: {
           created_at: string
@@ -185,6 +274,47 @@ export type Database = {
           },
         ]
       }
+      patent_sections: {
+        Row: {
+          ai_generated: boolean | null
+          content: string
+          created_at: string
+          filing_id: string
+          id: string
+          reviewed: boolean | null
+          section_type: string
+          updated_at: string
+        }
+        Insert: {
+          ai_generated?: boolean | null
+          content: string
+          created_at?: string
+          filing_id: string
+          id?: string
+          reviewed?: boolean | null
+          section_type: string
+          updated_at?: string
+        }
+        Update: {
+          ai_generated?: boolean | null
+          content?: string
+          created_at?: string
+          filing_id?: string
+          id?: string
+          reviewed?: boolean | null
+          section_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patent_sections_filing_id_fkey"
+            columns: ["filing_id"]
+            isOneToOne: false
+            referencedRelation: "filings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -255,6 +385,103 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      trademark_clearance_logs: {
+        Row: {
+          filing_id: string
+          id: string
+          recommendations: string | null
+          risk_level: string | null
+          risk_score: number | null
+          search_results: Json | null
+          searched_at: string
+          searched_term: string
+          similarity_matches: Json | null
+        }
+        Insert: {
+          filing_id: string
+          id?: string
+          recommendations?: string | null
+          risk_level?: string | null
+          risk_score?: number | null
+          search_results?: Json | null
+          searched_at?: string
+          searched_term: string
+          similarity_matches?: Json | null
+        }
+        Update: {
+          filing_id?: string
+          id?: string
+          recommendations?: string | null
+          risk_level?: string | null
+          risk_score?: number | null
+          search_results?: Json | null
+          searched_at?: string
+          searched_term?: string
+          similarity_matches?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trademark_clearance_logs_filing_id_fkey"
+            columns: ["filing_id"]
+            isOneToOne: false
+            referencedRelation: "filings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trademark_sections: {
+        Row: {
+          clearance_status: string | null
+          created_at: string
+          filing_basis: string
+          filing_id: string
+          goods_services: string
+          id: string
+          international_classes: Json | null
+          mark_name: string
+          mark_type: string
+          owner_entity: string
+          risk_assessment: Json | null
+          updated_at: string
+        }
+        Insert: {
+          clearance_status?: string | null
+          created_at?: string
+          filing_basis: string
+          filing_id: string
+          goods_services: string
+          id?: string
+          international_classes?: Json | null
+          mark_name: string
+          mark_type: string
+          owner_entity: string
+          risk_assessment?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          clearance_status?: string | null
+          created_at?: string
+          filing_basis?: string
+          filing_id?: string
+          goods_services?: string
+          id?: string
+          international_classes?: Json | null
+          mark_name?: string
+          mark_type?: string
+          owner_entity?: string
+          risk_assessment?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trademark_sections_filing_id_fkey"
+            columns: ["filing_id"]
+            isOneToOne: false
+            referencedRelation: "filings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
