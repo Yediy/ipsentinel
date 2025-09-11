@@ -22,13 +22,12 @@ const Index = () => {
             </div>
             
             <h1 className="text-4xl lg:text-6xl font-bold mb-6 leading-tight">
-              Protect Your Ideas.<br />
-              <span className="text-primary-light">Instantly.</span>
+              File Patents, Trademarks & Copyrights in Minutes<br />
+              <span className="text-primary-light">— Without a Lawyer</span>
             </h1>
             
             <p className="text-xl lg:text-2xl mb-8 text-primary-light max-w-3xl mx-auto">
-              AI-powered patent, trademark & copyright filing. No lawyers needed. 
-              File in USA, Canada, EU & WIPO regions.
+              AI-powered IP filing for inventors, creators, and entrepreneurs.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
@@ -55,7 +54,7 @@ const Index = () => {
         <div className="legal-container">
           <div className="text-center mb-16">
             <h2 className="text-3xl lg:text-5xl font-bold text-legal-dark mb-6">
-              Your Idea Deserves Protection
+              Why Choose AI-Powered IP Filing?
             </h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
               Finally, IP law for the people. No gatekeeping, no $500/hour attorneys, no months of waiting.
@@ -63,32 +62,38 @@ const Index = () => {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8 mb-16">
-            <Card className="shadow-feature border-0 gradient-feature">
+            <Card className="shadow-feature border-0 gradient-feature hover:shadow-lg transition-all duration-300 hover:scale-105">
               <CardContent className="p-8 text-center">
-                <Zap className="h-12 w-12 text-primary mx-auto mb-4" />
-                <h3 className="text-2xl font-bold mb-4">AI-Powered Drafting</h3>
+                <div className="bg-primary/10 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                  <Zap className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-2xl font-bold mb-4">📄 Draft & File in Minutes</h3>
                 <p className="text-muted-foreground">
-                  Our AI generates patent claims, trademark applications, and copyright filings in USPTO-compliant format.
+                  Our AI generates patent claims, trademark applications, and copyright filings in USPTO-compliant format instantly.
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="shadow-feature border-0 gradient-feature">
+            <Card className="shadow-feature border-0 gradient-feature hover:shadow-lg transition-all duration-300 hover:scale-105">
               <CardContent className="p-8 text-center">
-                <Globe className="h-12 w-12 text-primary mx-auto mb-4" />
-                <h3 className="text-2xl font-bold mb-4">Global Filing</h3>
+                <div className="bg-primary/10 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                  <Shield className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-2xl font-bold mb-4">🧠 AI-Powered Accuracy</h3>
                 <p className="text-muted-foreground">
-                  File in USA, Canada, European Union, and WIPO regions. Protect your IP worldwide with one platform.
+                  Trained on thousands of successful filings, our AI ensures your applications meet all legal requirements.
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="shadow-feature border-0 gradient-feature">
+            <Card className="shadow-feature border-0 gradient-feature hover:shadow-lg transition-all duration-300 hover:scale-105">
               <CardContent className="p-8 text-center">
-                <Users className="h-12 w-12 text-primary mx-auto mb-4" />
-                <h3 className="text-2xl font-bold mb-4">Smart Guidance</h3>
+                <div className="bg-primary/10 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-2xl font-bold mb-4">💰 Transparent Pricing</h3>
                 <p className="text-muted-foreground">
-                  Answer simple questions. Our AI determines if you need a patent, trademark, copyright, or combination.
+                  No hidden fees, no hourly billing. See exactly what you'll pay before you start.
                 </p>
               </CardContent>
             </Card>
@@ -109,31 +114,31 @@ const Index = () => {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="bg-primary text-primary-foreground rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6 text-2xl font-bold">
-                1
+            <div className="text-center group">
+              <div className="bg-gradient-to-br from-primary to-primary-dark text-primary-foreground rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6 text-3xl font-bold shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
+                1️⃣
               </div>
-              <h3 className="text-xl font-bold mb-4">Answer Simple Questions</h3>
+              <h3 className="text-2xl font-bold mb-4">Describe your idea</h3>
               <p className="text-muted-foreground">
                 Our smart wizard asks about your creation and determines the best protection strategy.
               </p>
             </div>
 
-            <div className="text-center">
-              <div className="bg-primary text-primary-foreground rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6 text-2xl font-bold">
-                2
+            <div className="text-center group">
+              <div className="bg-gradient-to-br from-primary to-primary-dark text-primary-foreground rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6 text-3xl font-bold shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
+                2️⃣
               </div>
-              <h3 className="text-xl font-bold mb-4">AI Generates Documents</h3>
+              <h3 className="text-2xl font-bold mb-4">AI prepares your IP documents</h3>
               <p className="text-muted-foreground">
                 Our AI creates USPTO-compliant patent claims, trademark applications, or copyright filings.
               </p>
             </div>
 
-            <div className="text-center">
-              <div className="bg-primary text-primary-foreground rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6 text-2xl font-bold">
-                3
+            <div className="text-center group">
+              <div className="bg-gradient-to-br from-primary to-primary-dark text-primary-foreground rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6 text-3xl font-bold shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
+                3️⃣
               </div>
-              <h3 className="text-xl font-bold mb-4">We File & Track</h3>
+              <h3 className="text-2xl font-bold mb-4">Submit to USPTO/USCO</h3>
               <p className="text-muted-foreground">
                 We submit your application and provide real-time status updates until approval.
               </p>
@@ -154,89 +159,122 @@ const Index = () => {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            <Card className="shadow-card">
+          <div className="grid md:grid-cols-4 gap-8">
+            <Card className="shadow-card hover:shadow-xl transition-all duration-300 hover:scale-105 group">
               <CardContent className="p-8">
                 <div className="text-center">
-                  <h3 className="text-2xl font-bold mb-2">Basic Filing</h3>
+                  <h3 className="text-2xl font-bold mb-2">Free</h3>
+                  <div className="text-4xl font-bold text-primary mb-4">$0</div>
+                  <p className="text-muted-foreground mb-6">Try it out</p>
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 mb-4">
+                    <ul className="space-y-3 text-left">
+                      <li className="flex items-center">
+                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
+                        <span className="text-sm">AI interview demo</span>
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
+                        <span className="text-sm">Document preview</span>
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
+                        <span className="text-sm">No export</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <Button variant="outline" className="w-full">Try Free</Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-card hover:shadow-xl transition-all duration-300 hover:scale-105 group">
+              <CardContent className="p-8">
+                <div className="text-center">
+                  <h3 className="text-2xl font-bold mb-2">Basic</h3>
                   <div className="text-4xl font-bold text-primary mb-4">$49</div>
                   <p className="text-muted-foreground mb-6">+ Government fees</p>
-                  <ul className="space-y-3 mb-8">
-                    <li className="flex items-center">
-                      <CheckCircle className="h-5 w-5 text-success mr-2" />
-                      AI-generated filing
-                    </li>
-                    <li className="flex items-center">
-                      <CheckCircle className="h-5 w-5 text-success mr-2" />
-                      USPTO compliance check
-                    </li>
-                    <li className="flex items-center">
-                      <CheckCircle className="h-5 w-5 text-success mr-2" />
-                      Email support
-                    </li>
-                  </ul>
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 mb-4">
+                    <ul className="space-y-3 text-left">
+                      <li className="flex items-center">
+                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
+                        <span className="text-sm">AI-generated filing</span>
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
+                        <span className="text-sm">USPTO compliance check</span>
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
+                        <span className="text-sm">Email support</span>
+                      </li>
+                    </ul>
+                  </div>
                   <Button className="w-full">Choose Basic</Button>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="shadow-card border-primary">
+            <Card className="shadow-card border-primary hover:shadow-xl transition-all duration-300 hover:scale-105 group">
               <CardContent className="p-8">
                 <div className="text-center">
                   <div className="bg-primary text-primary-foreground px-3 py-1 rounded-full text-sm font-medium mb-4 inline-block">
                     Most Popular
                   </div>
-                  <h3 className="text-2xl font-bold mb-2">Pro Filing</h3>
-                  <div className="text-4xl font-bold text-primary mb-4">$129</div>
+                  <h3 className="text-2xl font-bold mb-2">Pro</h3>
+                  <div className="text-4xl font-bold text-primary mb-4">$149</div>
                   <p className="text-muted-foreground mb-6">+ Government fees</p>
-                  <ul className="space-y-3 mb-8">
-                    <li className="flex items-center">
-                      <CheckCircle className="h-5 w-5 text-success mr-2" />
-                      Everything in Basic
-                    </li>
-                    <li className="flex items-center">
-                      <CheckCircle className="h-5 w-5 text-success mr-2" />
-                      Attorney review
-                    </li>
-                    <li className="flex items-center">
-                      <CheckCircle className="h-5 w-5 text-success mr-2" />
-                      Priority filing
-                    </li>
-                    <li className="flex items-center">
-                      <CheckCircle className="h-5 w-5 text-success mr-2" />
-                      IP monitoring
-                    </li>
-                  </ul>
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 mb-4">
+                    <ul className="space-y-3 text-left">
+                      <li className="flex items-center">
+                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
+                        <span className="text-sm">Everything in Basic</span>
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
+                        <span className="text-sm">Attorney review</span>
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
+                        <span className="text-sm">Priority filing</span>
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
+                        <span className="text-sm">IP monitoring</span>
+                      </li>
+                    </ul>
+                  </div>
                   <Button className="w-full">Choose Pro</Button>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="shadow-card">
+            <Card className="shadow-card hover:shadow-xl transition-all duration-300 hover:scale-105 group">
               <CardContent className="p-8">
                 <div className="text-center">
-                  <h3 className="text-2xl font-bold mb-2">Enterprise</h3>
+                  <h3 className="text-2xl font-bold mb-2">Partner</h3>
                   <div className="text-4xl font-bold text-primary mb-4">$199</div>
                   <p className="text-muted-foreground mb-6">+ Government fees</p>
-                  <ul className="space-y-3 mb-8">
-                    <li className="flex items-center">
-                      <CheckCircle className="h-5 w-5 text-success mr-2" />
-                      Everything in Pro
-                    </li>
-                    <li className="flex items-center">
-                      <CheckCircle className="h-5 w-5 text-success mr-2" />
-                      Multiple IP types
-                    </li>
-                    <li className="flex items-center">
-                      <CheckCircle className="h-5 w-5 text-success mr-2" />
-                      Global filing
-                    </li>
-                    <li className="flex items-center">
-                      <CheckCircle className="h-5 w-5 text-success mr-2" />
-                      Dedicated support
-                    </li>
-                  </ul>
-                  <Button className="w-full">Choose Enterprise</Button>
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 mb-4">
+                    <ul className="space-y-3 text-left">
+                      <li className="flex items-center">
+                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
+                        <span className="text-sm">Everything in Pro</span>
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
+                        <span className="text-sm">Multiple IP types</span>
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
+                        <span className="text-sm">Global filing</span>
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
+                        <span className="text-sm">Dedicated support</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <Button className="w-full">Choose Partner</Button>
                 </div>
               </CardContent>
             </Card>
