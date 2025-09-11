@@ -31,7 +31,7 @@ const Index = () => {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-              <Link to="/dashboard">
+              <Link to="/auth">
                 <Button size="lg" variant="secondary" className="bg-white text-primary hover:bg-primary-light hover:text-white text-lg px-8 py-4 shadow-hero">
                   Start Filing Now
                   <ArrowRight className="ml-2 h-5 w-5" />
@@ -291,7 +291,7 @@ const Index = () => {
           <p className="text-xl mb-8 text-primary-light max-w-2xl mx-auto">
             Join thousands of creators, inventors, and entrepreneurs who trust IPSentinel with their intellectual property.
           </p>
-          <Link to="/dashboard">
+          <Link to="/auth">
             <Button size="lg" variant="secondary" className="bg-white text-primary hover:bg-primary-light hover:text-white text-lg px-8 py-4 shadow-hero">
               Start Your First Filing
               <ArrowRight className="ml-2 h-5 w-5" />
