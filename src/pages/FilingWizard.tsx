@@ -11,11 +11,39 @@ import { Shield, ArrowLeft, ArrowRight, Lightbulb, Building, Palette, Code, Musi
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import PatentInterviewWizard from "@/components/patent/PatentInterviewWizard";
+import PatentReviewPanel from "@/components/patent/PatentReviewPanel";
+
+interface PatentData {
+  email: string;
+  inventionTitle: string;
+  problemDescription: string;
+  solutionDescription: string;
+  uniqueFeatures: string;
+  useCases: string;
+  components: string;
+  howItWorks: string;
+  priorArt: string;
+  inventors: string;
+  commercialUse: string;
+}
+
+interface GeneratedContent {
+  abstract: string;
+  background: string;
+  summary: string;
+  detailed_description: string;
+  claims: string[];
+  drawings_description?: string;
+}
 
 const FilingWizard = () => {
   const [step, setStep] = useState(1);
-  const [selectedPlan, setSelectedPlan] = useState("basic");
+  const [selectedPlan, setSelectedPlan] = useState("review");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [patentData, setPatentData] = useState<PatentData | null>(null);
+  const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
+  const [wizardMode, setWizardMode] = useState<'select' | 'patent-interview' | 'patent-review' | 'payment'>('select');
   const [formData, setFormData] = useState({
     creationType: "",
     regions: [],
@@ -34,10 +62,34 @@ const FilingWizard = () => {
   });
 
   const creationTypes = [
-    { id: "invention", label: "Invention/Device", icon: Lightbulb, desc: "Physical products, software, processes" },
-    { id: "brand", label: "Brand/Logo", icon: Building, desc: "Company names, logos, slogans" },
-    { id: "creative", label: "Creative Work", icon: Palette, desc: "Art, music, writing, design" },
-    { id: "software", label: "Software/Code", icon: Code, desc: "Applications, algorithms, source code" },
+    { 
+      id: "patent", 
+      label: "Patent (Utility)", 
+      icon: Lightbulb, 
+      desc: "Inventions, processes, machines, software methods",
+      detailed: "Protect how your invention works and its unique functionality"
+    },
+    { 
+      id: "brand", 
+      label: "Trademark", 
+      icon: Building, 
+      desc: "Brand names, logos, slogans, trade dress",
+      detailed: "Protect your brand identity in the marketplace"
+    },
+    { 
+      id: "creative", 
+      label: "Copyright", 
+      icon: Palette, 
+      desc: "Creative works, software code, writings, art",
+      detailed: "Protect original creative expressions and content"
+    },
+    { 
+      id: "design", 
+      label: "Design Patent", 
+      icon: Code, 
+      desc: "Product appearance, ornamental designs",
+      detailed: "Protect the visual appearance of your product"
+    },
   ];
 
   const regions = [
@@ -57,7 +109,22 @@ const FilingWizard = () => {
   ];
 
   const handleNext = () => {
-    if (step < 4) setStep(step + 1);
+    if (formData.creationType === 'patent') {
+      setWizardMode('patent-interview');
+    } else if (step < 4) {
+      setStep(step + 1);
+    }
+  };
+
+  const handlePatentInterviewComplete = (data: PatentData) => {
+    setPatentData(data);
+    setWizardMode('patent-review');
+  };
+
+  const handlePatentReviewComplete = (data: PatentData, content: GeneratedContent) => {
+    setPatentData(data);
+    setGeneratedContent(content);
+    setWizardMode('payment');
   };
 
   const handlePrevious = () => {
@@ -122,18 +189,36 @@ const FilingWizard = () => {
   const handlePayment = async () => {
     setIsProcessingPayment(true);
     try {
+      let filingData;
+      
+      if (patentData && generatedContent) {
+        // Use patent interview data
+        filingData = {
+          type: 'patent',
+          country: 'US',
+          title: patentData.inventionTitle,
+          problem: patentData.problemDescription,
+          solution: patentData.solutionDescription,
+          components: patentData.components.split(',').map(c => c.trim()),
+          generated_content: generatedContent
+        };
+      } else {
+        // Use legacy form data
+        filingData = {
+          type: formData.creationType,
+          country: formData.regions[0] || 'US',
+          title: formData.title || formData.brandName,
+          problem: formData.problemSolved || formData.brandCategory,
+          solution: formData.description || formData.keyFeatures,
+          components: formData.workType ? [formData.workType] : []
+        };
+      }
+
       const { data, error } = await supabase.functions.invoke('create-payment', {
         body: { 
           plan: selectedPlan,
-          filingData: {
-            type: formData.creationType,
-            country: formData.regions[0] || 'US', // Use first selected region
-            title: formData.title || formData.brandName,
-            problem: formData.problemSolved || formData.brandCategory,
-            solution: formData.description || formData.keyFeatures,
-            components: formData.workType ? [formData.workType] : []
-          },
-          contactEmail: formData.email
+          filingData,
+          contactEmail: patentData?.email || formData.email
         }
       });
       
@@ -149,6 +234,16 @@ const FilingWizard = () => {
     }
   };
 
+  // Render patent interview wizard
+  if (wizardMode === 'patent-interview') {
+    return <PatentInterviewWizard onComplete={handlePatentInterviewComplete} />;
+  }
+
+  // Render patent review panel
+  if (wizardMode === 'patent-review' && patentData) {
+    return <PatentReviewPanel patentData={patentData} onProceedToPayment={handlePatentReviewComplete} />;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -161,10 +256,10 @@ const FilingWizard = () => {
             </Link>
             <div className="flex items-center space-x-2">
               <Shield className="h-8 w-8 text-primary" />
-              <span className="text-2xl font-bold text-legal-dark">IPSentinel</span>
+              <span className="text-2xl font-bold text-legal-dark">IPGenie</span>
             </div>
             <div className="text-sm text-muted-foreground">
-              Step {step} of 4
+              {wizardMode === 'payment' ? 'Review & Payment' : `Step ${step} of 4`}
             </div>
           </div>
         </div>
@@ -186,15 +281,15 @@ const FilingWizard = () => {
             </div>
           </div>
 
-          {/* Step 1: What did you create? */}
-          {step === 1 && (
+          {/* Step 1: What type of IP protection do you need? */}
+          {step === 1 && wizardMode === 'select' && (
             <Card className="shadow-feature">
               <CardHeader>
                 <CardTitle className="text-2xl text-center text-legal-dark">
-                  What did you create?
+                  What type of IP protection do you need?
                 </CardTitle>
                 <p className="text-center text-muted-foreground">
-                  Choose the type that best describes your creation
+                  Choose the type that best describes what you want to protect
                 </p>
               </CardHeader>
               <CardContent className="p-8">
@@ -215,22 +310,40 @@ const FilingWizard = () => {
                           <div className="bg-primary/10 p-3 rounded-lg">
                             <Icon className="h-6 w-6 text-primary" />
                           </div>
-                          <div>
+                          <div className="flex-1">
                             <h3 className="font-semibold text-lg mb-2">{type.label}</h3>
-                            <p className="text-muted-foreground">{type.desc}</p>
+                            <p className="text-muted-foreground text-sm mb-3">{type.desc}</p>
+                            <p className="text-xs text-primary font-medium">{type.detailed}</p>
                           </div>
                         </div>
                       </div>
                     );
                   })}
                 </div>
+                
+                {formData.creationType === 'patent' && (
+                  <div className="mt-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
+                    <div className="flex items-start space-x-3">
+                      <Lightbulb className="h-5 w-5 text-primary mt-0.5" />
+                      <div>
+                        <h4 className="font-semibold text-primary mb-1">Patent Interview Process</h4>
+                        <p className="text-sm text-muted-foreground">
+                          You'll go through an AI-guided interview to capture all the details about your invention. 
+                          Our system will then generate a complete patent application including claims, abstract, 
+                          and detailed description.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="flex justify-end mt-8">
                   <Button 
                     onClick={handleNext}
                     disabled={!formData.creationType}
                     className="px-8"
                   >
-                    Continue
+                    {formData.creationType === 'patent' ? 'Start Patent Interview' : 'Continue'}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </div>
@@ -467,15 +580,21 @@ const FilingWizard = () => {
             </Card>
           )}
 
-          {/* Step 4: AI Recommendation */}
-          {step === 4 && (
+          {/* Payment Step - can be reached from patent review or regular flow */}
+          {(step === 4 || wizardMode === 'payment') && (
             <Card className="shadow-feature">
               <CardHeader>
                 <CardTitle className="text-2xl text-center text-legal-dark">
-                  AI Recommendation
+                  {wizardMode === 'payment' && patentData ? 
+                    `Choose Your Plan for "${patentData.inventionTitle}"` :
+                    'Choose Your Protection Plan'
+                  }
                 </CardTitle>
                 <p className="text-center text-muted-foreground">
-                  Based on your answers, here's what we recommend
+                  {wizardMode === 'payment' && patentData ?
+                    'Your patent application is ready. Select a plan to proceed with filing.' :
+                    'Select the level of service that best fits your needs'
+                  }
                 </p>
               </CardHeader>
               <CardContent className="p-8">
