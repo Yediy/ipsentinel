@@ -103,6 +103,98 @@ export type Database = {
         }
         Relationships: []
       }
+      copyright_uploads: {
+        Row: {
+          copyright_id: string
+          file_hash: string | null
+          file_path: string
+          file_size: number | null
+          filename: string
+          id: string
+          mime_type: string
+          uploaded_at: string
+        }
+        Insert: {
+          copyright_id: string
+          file_hash?: string | null
+          file_path: string
+          file_size?: number | null
+          filename: string
+          id?: string
+          mime_type: string
+          uploaded_at?: string
+        }
+        Update: {
+          copyright_id?: string
+          file_hash?: string | null
+          file_path?: string
+          file_size?: number | null
+          filename?: string
+          id?: string
+          mime_type?: string
+          uploaded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "copyright_uploads_copyright_id_fkey"
+            columns: ["copyright_id"]
+            isOneToOne: false
+            referencedRelation: "copyrights"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      copyrights: {
+        Row: {
+          authorship_description: string | null
+          created_at: string
+          date_of_creation: string | null
+          date_of_publication: string | null
+          filing_id: string
+          id: string
+          is_published: boolean | null
+          nature_of_authorship: string | null
+          owner_address: string | null
+          owner_name: string
+          owner_nationality: string | null
+          updated_at: string
+          work_title: string
+          work_type: string
+        }
+        Insert: {
+          authorship_description?: string | null
+          created_at?: string
+          date_of_creation?: string | null
+          date_of_publication?: string | null
+          filing_id: string
+          id?: string
+          is_published?: boolean | null
+          nature_of_authorship?: string | null
+          owner_address?: string | null
+          owner_name: string
+          owner_nationality?: string | null
+          updated_at?: string
+          work_title: string
+          work_type: string
+        }
+        Update: {
+          authorship_description?: string | null
+          created_at?: string
+          date_of_creation?: string | null
+          date_of_publication?: string | null
+          filing_id?: string
+          id?: string
+          is_published?: boolean | null
+          nature_of_authorship?: string | null
+          owner_address?: string | null
+          owner_name?: string
+          owner_nationality?: string | null
+          updated_at?: string
+          work_title?: string
+          work_type?: string
+        }
+        Relationships: []
+      }
       filing_documents: {
         Row: {
           created_at: string

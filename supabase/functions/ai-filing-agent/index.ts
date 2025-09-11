@@ -45,6 +45,15 @@ serve(async (req) => {
       case 'trademark_clearance':
         result = await performTrademarkClearance(supabase, openAIApiKey, filing_id, data);
         break;
+      case 'classify_copyright':
+        result = await classifyCopyrightWork(supabase, openAIApiKey, filing_id, data);
+        break;
+      case 'generate_copyright_form':
+        result = await generateCopyrightForm(supabase, openAIApiKey, filing_id, data);
+        break;
+      case 'handle_file_upload':
+        result = await handleFileUpload(supabase, filing_id, data);
+        break;
       case 'review_filing':
         result = await reviewFiling(supabase, filing_id);
         break;
@@ -457,6 +466,145 @@ async function simulateTrademarkSearch(markName: string, classes: any[]) {
 function extractClassNumbers(text: string): number[] {
   const matches = text.match(/Class\s+(\d+)/gi) || [];
   return matches.map(match => parseInt(match.replace(/Class\s+/i, '')));
+}
+
+// Copyright-specific functions
+async function classifyCopyrightWork(supabase: any, openAIApiKey: string, filing_id: string, data: any) {
+  try {
+    console.log('Classifying copyright work for filing:', filing_id);
+    
+    const { data: template } = await supabase
+      .from('ai_prompt_templates')
+      .select('*')
+      .eq('template_name', 'copyright_work_classification')
+      .eq('is_active', true)
+      .single();
+
+    if (!template) {
+      throw new Error('Copyright work classification template not found');
+    }
+
+    const response = await generateSectionWithTemplate(openAIApiKey, template, data);
+    
+    let classificationResult;
+    try {
+      classificationResult = JSON.parse(response);
+    } catch (e) {
+      console.error('Failed to parse classification result:', response);
+      throw new Error('Invalid classification response format');
+    }
+
+    // Save classification to copyright sections table
+    await supabase
+      .from('copyrights')
+      .upsert({
+        filing_id,
+        work_title: data.work_title || 'Untitled Work',
+        work_type: classificationResult.work_type,
+        nature_of_authorship: classificationResult.nature_of_authorship,
+        owner_name: data.owner_name || '',
+        owner_address: data.owner_address || '',
+        owner_nationality: data.owner_nationality || 'United States',
+        is_published: data.is_published || false,
+        date_of_creation: data.date_of_creation || null,
+        date_of_publication: data.date_of_publication || null
+      });
+
+    return {
+      success: true,
+      classification: classificationResult,
+      message: 'Work classified successfully'
+    };
+  } catch (error) {
+    console.error('Error classifying copyright work:', error);
+    throw error;
+  }
+}
+
+async function generateCopyrightForm(supabase: any, openAIApiKey: string, filing_id: string, data: any) {
+  try {
+    console.log('Generating copyright Form CO for filing:', filing_id);
+    
+    const { data: template } = await supabase
+      .from('ai_prompt_templates')
+      .select('*')
+      .eq('template_name', 'copyright_form_co_generator')
+      .eq('is_active', true)
+      .single();
+
+    if (!template) {
+      throw new Error('Copyright form generator template not found');
+    }
+
+    const response = await generateSectionWithTemplate(openAIApiKey, template, data);
+    
+    let formData;
+    try {
+      formData = JSON.parse(response);
+    } catch (e) {
+      console.error('Failed to parse form data:', response);
+      throw new Error('Invalid form response format');
+    }
+
+    // Update the filing with generated content
+    await supabase
+      .from('filings')
+      .update({
+        generated_content: formData,
+        status: 'draft_complete',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', filing_id);
+
+    return {
+      success: true,
+      form_data: formData,
+      message: 'Copyright form generated successfully'
+    };
+  } catch (error) {
+    console.error('Error generating copyright form:', error);
+    throw error;
+  }
+}
+
+async function handleFileUpload(supabase: any, filing_id: string, fileData: any) {
+  try {
+    console.log('Processing file upload for filing:', filing_id);
+    
+    // Get copyright record
+    const { data: copyright } = await supabase
+      .from('copyrights')
+      .select('*')
+      .eq('filing_id', filing_id)
+      .single();
+
+    if (!copyright) {
+      throw new Error('Copyright record not found');
+    }
+
+    // Save file metadata
+    const { data: upload } = await supabase
+      .from('copyright_uploads')
+      .insert({
+        copyright_id: copyright.id,
+        filename: fileData.filename,
+        mime_type: fileData.mime_type,
+        file_size: fileData.file_size,
+        file_hash: fileData.file_hash,
+        file_path: fileData.file_path
+      })
+      .select()
+      .single();
+
+    return {
+      success: true,
+      upload_id: upload.id,
+      message: 'File uploaded successfully'
+    };
+  } catch (error) {
+    console.error('Error handling file upload:', error);
+    throw error;
+  }
 }
 
 async function reviewFiling(supabase: any, filing_id: string) {

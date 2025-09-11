@@ -1,473 +1,535 @@
-import { useState, useEffect } from "react";
+import { useState, useRef } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
-import { Palette, ArrowLeft, ArrowRight, Save, Bot, CheckCircle, Upload, FileText } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Upload, FileText, Image, Music, Code, Video, FileArchive, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
-interface CopyrightQuestion {
-  id: string;
-  type: 'text' | 'textarea' | 'multiple-choice' | 'file-upload' | 'date';
-  question: string;
-  placeholder?: string;
-  options?: string[];
-  required: boolean;
-  followUp?: string;
+interface CopyrightInterviewWizardProps {
+  filingId: string;
+  onComplete: (data: any) => void;
 }
 
-interface CopyrightData {
-  email: string;
-  workTitle: string;
-  workType: string;
-  workDescription: string;
-  authorName: string;
-  creationDate: string;
-  publicationDate: string;
-  publicationStatus: string;
-  copyrightOwner: string;
-  workForHire: string;
-  previousRegistration: string;
-  derivativeWork: string;
-  workCategory: string;
-  fileUploaded?: boolean;
-  fileName?: string;
-  registrationPurpose: string;
-  commercialUse: string;
+interface FileUpload {
+  file: File;
+  preview?: string;
+  uploaded?: boolean;
+  file_path?: string;
 }
 
-const CopyrightInterviewWizard = ({ 
-  onComplete 
-}: { 
-  onComplete: (data: CopyrightData) => void;
-}) => {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [responses, setResponses] = useState<Record<string, string>>({});
-  const [currentAnswer, setCurrentAnswer] = useState("");
-  const [isThinking, setIsThinking] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [sessionId, setSessionId] = useState<string>("");
+export const CopyrightInterviewWizard = ({ filingId, onComplete }: CopyrightInterviewWizardProps) => {
+  const [currentStep, setCurrentStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [files, setFiles] = useState<FileUpload[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const [formData, setFormData] = useState({
+    workTitle: '',
+    workDescription: '',
+    workType: '',
+    authorName: '',
+    authorNationality: 'United States',
+    ownerName: '',
+    ownerAddress: '',
+    creationDate: '',
+    isPublished: false,
+    publicationDate: '',
+    natureOfAuthorship: '',
+    creativeContribution: ''
+  });
 
-  const copyrightQuestions: CopyrightQuestion[] = [
-    {
-      id: "email",
-      type: "text",
-      question: "Let's start with your contact information. What's your email address?",
-      placeholder: "creator@example.com",
-      required: true
-    },
-    {
-      id: "workTitle",
-      type: "text",
-      question: "What is the title of the work you want to copyright?",
-      placeholder: "e.g., 'The Digital Marketing Handbook' or 'Sunrise Symphony'",
-      required: true
-    },
-    {
-      id: "workType",
-      type: "multiple-choice",
-      question: "What type of creative work is this?",
-      options: [
-        "Literary Work (books, articles, poems, etc.)",
-        "Musical Work (songs, compositions)",
-        "Dramatic Work (plays, scripts)",
-        "Visual Arts Work (paintings, photographs, graphics)",
-        "Software/Computer Program",
-        "Audiovisual Work (videos, films)",
-        "Audio Recording",
-        "Architectural Work",
-        "Other"
-      ],
-      required: true
-    },
-    {
-      id: "workDescription",
-      type: "textarea",
-      question: "Describe your work in detail. What is it about?",
-      placeholder: "A comprehensive guide to digital marketing strategies for small businesses, covering social media, email marketing, SEO, and analytics...",
-      required: true,
-      followUp: "This description will appear in your copyright registration."
-    },
-    {
-      id: "authorName",
-      type: "text",
-      question: "Who is the author/creator of this work?",
-      placeholder: "Full legal name of the author",
-      required: true,
-      followUp: "This is the person who actually created the work."
-    },
-    {
-      id: "copyrightOwner",
-      type: "multiple-choice",
-      question: "Who owns the copyright to this work?",
-      options: [
-        "I am the author and owner",
-        "I own it but didn't create it (transfer of ownership)",
-        "My company/organization owns it",
-        "Joint ownership",
-        "Other arrangement"
-      ],
-      required: true
-    },
-    {
-      id: "workForHire",
-      type: "multiple-choice",
-      question: "Is this a 'work made for hire'?",
-      options: [
-        "No, I created this independently",
-        "Yes, I created this as an employee",
-        "Yes, this was commissioned work under contract",
-        "Not sure"
-      ],
-      required: true,
-      followUp: "Work for hire affects who owns the copyright."
-    },
-    {
-      id: "creationDate",
-      type: "text",
-      question: "When was this work created or completed?",
-      placeholder: "MM/DD/YYYY or approximate date",
-      required: true,
-      followUp: "This is when you finished creating the work, not when you started."
-    },
-    {
-      id: "publicationStatus",
-      type: "multiple-choice",
-      question: "Has this work been published?",
-      options: [
-        "No, it's unpublished",
-        "Yes, it has been published",
-        "It will be published soon",
-        "Not sure what counts as publication"
-      ],
-      required: true
-    },
-    {
-      id: "publicationDate",
-      type: "text",
-      question: "If published, when was it first published?",
-      placeholder: "MM/DD/YYYY or 'Not published'",
-      required: false,
-      followUp: "Publication means distribution to the public, including online."
-    },
-    {
-      id: "derivativeWork",
-      type: "multiple-choice",
-      question: "Is this work based on or derived from another existing work?",
-      options: [
-        "No, this is completely original",
-        "Yes, it's based on my own previous work",
-        "Yes, it incorporates public domain material",
-        "Yes, it's based on someone else's work (with permission)",
-        "Not sure"
-      ],
-      required: true
-    },
-    {
-      id: "previousRegistration",
-      type: "multiple-choice",
-      question: "Have you previously registered copyright for this work or a version of it?",
-      options: [
-        "No, this is the first registration",
-        "Yes, I've registered a previous version",
-        "Not sure",
-        "Someone else may have registered it"
-      ],
-      required: true
-    },
-    {
-      id: "registrationPurpose",
-      type: "textarea",
-      question: "Why are you registering this copyright? What do you plan to do with it?",
-      placeholder: "I plan to publish and sell this work, license it to others, and want legal protection against infringement...",
-      required: false,
-      followUp: "This helps us understand your needs and provide better guidance."
-    },
-    {
-      id: "commercialUse",
-      type: "multiple-choice",
-      question: "Do you plan to use this work commercially?",
-      options: [
-        "Yes, I plan to sell or license it",
-        "No, it's for personal or educational use",
-        "Maybe in the future",
-        "It's for non-profit purposes"
-      ],
-      required: true
-    }
+  const workTypes = [
+    { value: 'Literary Work', label: 'Literary Work', icon: FileText },
+    { value: 'Visual Arts Work', label: 'Visual Arts Work', icon: Image },
+    { value: 'Musical Work', label: 'Musical Work', icon: Music },
+    { value: 'Sound Recording', label: 'Sound Recording', icon: Music },
+    { value: 'Motion Picture', label: 'Motion Picture', icon: Video },
+    { value: 'Computer Program', label: 'Computer Program', icon: Code },
+    { value: 'Compilation', label: 'Compilation', icon: FileArchive }
   ];
 
-  useEffect(() => {
-    const id = `copyright_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    setSessionId(id);
-  }, []);
-
-  useEffect(() => {
-    if (Object.keys(responses).length > 0) {
-      localStorage.setItem(`copyright_interview_${sessionId}`, JSON.stringify({
-        responses,
-        currentStep,
-        timestamp: Date.now()
-      }));
-    }
-  }, [responses, currentStep, sessionId]);
-
-  const currentQuestion = copyrightQuestions[currentStep];
-  const progress = ((currentStep + 1) / copyrightQuestions.length) * 100;
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setUploadedFile(file);
-      setCurrentAnswer(`File uploaded: ${file.name}`);
-      toast.success("File uploaded successfully!");
-    }
-  };
-
-  const handleNext = async () => {
-    if (currentQuestion.required && !currentAnswer.trim()) {
-      toast.error("This question is required. Please provide an answer.");
-      return;
-    }
-
-    // Save the response
-    setResponses(prev => ({
-      ...prev,
-      [currentQuestion.id]: currentAnswer
-    }));
-
-    // Simulate AI processing
-    setIsThinking(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsThinking(false);
-
-    if (currentStep < copyrightQuestions.length - 1) {
-      setCurrentStep(currentStep + 1);
-      setCurrentAnswer("");
-    } else {
-      // Interview complete
-      const copyrightData: CopyrightData = {
-        email: responses.email || "",
-        workTitle: responses.workTitle || "",
-        workType: responses.workType || "",
-        workDescription: responses.workDescription || "",
-        authorName: responses.authorName || "",
-        creationDate: responses.creationDate || "",
-        publicationDate: responses.publicationDate || "",
-        publicationStatus: responses.publicationStatus || "",
-        copyrightOwner: responses.copyrightOwner || "",
-        workForHire: responses.workForHire || "",
-        previousRegistration: responses.previousRegistration || "",
-        derivativeWork: responses.derivativeWork || "",
-        workCategory: responses.workType || "",
-        fileUploaded: !!uploadedFile,
-        fileName: uploadedFile?.name,
-        registrationPurpose: responses.registrationPurpose || "",
-        commercialUse: responses.commercialUse || ""
-      };
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(event.target.files || []);
+    
+    const newFiles: FileUpload[] = [];
+    
+    for (const file of selectedFiles) {
+      let preview = undefined;
       
-      onComplete(copyrightData);
+      // Generate preview for images
+      if (file.type.startsWith('image/')) {
+        preview = URL.createObjectURL(file);
+      }
+      
+      newFiles.push({ file, preview });
+    }
+    
+    setFiles(prev => [...prev, ...newFiles]);
+  };
+
+  const uploadFilesToStorage = async () => {
+    const uploadedFiles = [];
+    
+    for (const fileData of files) {
+      if (fileData.uploaded) continue;
+      
+      try {
+        const user = await supabase.auth.getUser();
+        const userId = user.data.user?.id || 'anonymous';
+        
+        const fileName = `${Date.now()}-${fileData.file.name}`;
+        const filePath = `${userId}/${fileName}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('copyright-works')
+          .upload(filePath, fileData.file);
+        
+        if (uploadError) throw uploadError;
+        
+        fileData.file_path = filePath;
+        fileData.uploaded = true;
+        
+        uploadedFiles.push({
+          filename: fileData.file.name,
+          mime_type: fileData.file.type,
+          file_size: fileData.file.size,
+          file_path: filePath,
+          file_hash: 'placeholder-hash' // TODO: Generate actual hash
+        });
+        
+      } catch (error) {
+        console.error('Error uploading file:', error);
+        toast.error(`Failed to upload ${fileData.file.name}`);
+      }
+    }
+    
+    return uploadedFiles;
+  };
+
+  const classifyWork = async () => {
+    try {
+      setLoading(true);
+      
+      const uploadedFiles = await uploadFilesToStorage();
+      
+      const classificationData = {
+        filename: files[0]?.file.name || '',
+        file_type: files[0]?.file.type || '',
+        file_size: files[0]?.file.size || 0,
+        description: formData.workDescription,
+        work_title: formData.workTitle
+      };
+
+      const { data, error } = await supabase.functions.invoke('ai-filing-agent', {
+        body: {
+          action: 'classify_copyright',
+          filing_id: filingId,
+          data: {
+            ...classificationData,
+            ...formData,
+            owner_name: formData.ownerName,
+            owner_address: formData.ownerAddress,
+            owner_nationality: formData.authorNationality,
+            is_published: formData.isPublished,
+            date_of_creation: formData.creationDate,
+            date_of_publication: formData.publicationDate
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      // Handle file uploads
+      for (const fileUpload of uploadedFiles) {
+        await supabase.functions.invoke('ai-filing-agent', {
+          body: {
+            action: 'handle_file_upload',
+            filing_id: filingId,
+            data: fileUpload
+          }
+        });
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        workType: data.classification.work_type,
+        natureOfAuthorship: data.classification.nature_of_authorship
+      }));
+
+      toast.success('Work classified successfully!');
+      setCurrentStep(3);
+      
+    } catch (error) {
+      console.error('Error classifying work:', error);
+      toast.error('Failed to classify work');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handlePrevious = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
-      setCurrentAnswer(responses[copyrightQuestions[currentStep - 1].id] || "");
+  const generateForm = async () => {
+    try {
+      setLoading(true);
+
+      const { data, error } = await supabase.functions.invoke('ai-filing-agent', {
+        body: {
+          action: 'generate_copyright_form',
+          filing_id: filingId,
+          data: {
+            work_title: formData.workTitle,
+            work_type: formData.workType,
+            nature_of_authorship: formData.natureOfAuthorship,
+            author_name: formData.authorName,
+            author_nationality: formData.authorNationality,
+            year_of_creation: new Date(formData.creationDate).getFullYear(),
+            year_of_publication: formData.isPublished ? new Date(formData.publicationDate).getFullYear() : null,
+            publication_status: formData.isPublished ? 'Published' : 'Unpublished',
+            owner_name: formData.ownerName,
+            owner_address: formData.ownerAddress
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      toast.success('Copyright form generated successfully!');
+      onComplete(data.form_data);
+      
+    } catch (error) {
+      console.error('Error generating form:', error);
+      toast.error('Failed to generate copyright form');
+    } finally {
+      setLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="legal-container">
-          <div className="flex items-center justify-between py-6">
-            <div className="flex items-center space-x-2">
-              <Palette className="h-8 w-8 text-primary" />
-              <div>
-                <h1 className="text-2xl font-bold text-legal-dark">Copyright Interview</h1>
-                <p className="text-sm text-muted-foreground">AI-guided copyright registration</p>
-              </div>
-            </div>
-            <Badge variant="secondary" className="px-3 py-1">
-              Question {currentStep + 1} of {copyrightQuestions.length}
-            </Badge>
-          </div>
+  const getFileIcon = (type: string) => {
+    if (type.startsWith('image/')) return Image;
+    if (type.startsWith('audio/')) return Music;
+    if (type.startsWith('video/')) return Video;
+    if (type.includes('pdf') || type.includes('document')) return FileText;
+    if (type.includes('zip') || type.includes('archive')) return FileArchive;
+    return FileText;
+  };
+
+  const renderStep1 = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle>Work Information</CardTitle>
+        <CardDescription>Tell us about the work you want to copyright</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="workTitle">Work Title</Label>
+          <Input
+            id="workTitle"
+            value={formData.workTitle}
+            onChange={(e) => setFormData(prev => ({ ...prev, workTitle: e.target.value }))}
+            placeholder="Enter the title of your work"
+          />
         </div>
-      </header>
 
-      <div className="legal-container py-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Interview Progress</span>
-              <span className="text-sm text-muted-foreground">{Math.round(progress)}% Complete</span>
-            </div>
-            <Progress value={progress} className="h-3" />
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="workDescription">Work Description</Label>
+          <Textarea
+            id="workDescription"
+            value={formData.workDescription}
+            onChange={(e) => setFormData(prev => ({ ...prev, workDescription: e.target.value }))}
+            placeholder="Describe your creative work"
+            rows={3}
+          />
+        </div>
 
-          <Card className="shadow-feature">
-            <CardContent className="p-8">
-              {isThinking && (
-                <div className="mb-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
-                  <div className="flex items-center space-x-3">
-                    <Bot className="h-5 w-5 text-primary animate-pulse" />
-                    <span className="text-sm text-primary">AI is processing your response...</span>
-                  </div>
-                </div>
-              )}
-
-              <div className="mb-8">
-                <div className="flex items-start space-x-4 mb-6">
-                  <div className="bg-primary/10 p-3 rounded-full">
-                    <Bot className="h-6 w-6 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <h2 className="text-xl font-semibold text-legal-dark mb-2">
-                      {currentQuestion.question}
-                    </h2>
-                    {currentQuestion.followUp && (
-                      <p className="text-muted-foreground text-sm">
-                        {currentQuestion.followUp}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="ml-16">
-                  {currentQuestion.type === 'text' && (
-                    <Input
-                      value={currentAnswer}
-                      onChange={(e) => setCurrentAnswer(e.target.value)}
-                      placeholder={currentQuestion.placeholder}
-                      className="text-lg"
-                      onKeyPress={(e) => e.key === 'Enter' && handleNext()}
-                    />
-                  )}
-
-                  {currentQuestion.type === 'textarea' && (
-                    <Textarea
-                      value={currentAnswer}
-                      onChange={(e) => setCurrentAnswer(e.target.value)}
-                      placeholder={currentQuestion.placeholder}
-                      className="min-h-[120px] text-lg"
-                      rows={4}
-                    />
-                  )}
-
-                  {currentQuestion.type === 'multiple-choice' && currentQuestion.options && (
-                    <div className="space-y-3">
-                      {currentQuestion.options.map((option) => (
-                        <div
-                          key={option}
-                          className={`border-2 rounded-lg p-4 cursor-pointer transition-all hover:shadow-card ${
-                            currentAnswer === option 
-                              ? 'border-primary bg-primary/5' 
-                              : 'border-border hover:border-primary/50'
-                          }`}
-                          onClick={() => setCurrentAnswer(option)}
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div className={`w-4 h-4 rounded-full border-2 ${
-                              currentAnswer === option 
-                                ? 'bg-primary border-primary' 
-                                : 'border-border'
-                            }`}>
-                              {currentAnswer === option && (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <div className="w-2 h-2 bg-white rounded-full"></div>
-                                </div>
-                              )}
-                            </div>
-                            <span className="text-base">{option}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {currentQuestion.type === 'file-upload' && (
-                    <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
-                      <input
-                        type="file"
-                        onChange={handleFileUpload}
-                        className="hidden"
-                        id="file-upload"
-                        accept=".pdf,.doc,.docx,.txt,.jpg,.png,.mp3,.mp4,.zip"
-                      />
-                      <label htmlFor="file-upload" className="cursor-pointer">
-                        <Upload className="h-12 w-12 text-primary mx-auto mb-4" />
-                        <p className="text-lg font-semibold">Upload Your Work</p>
-                        <p className="text-muted-foreground">
-                          Drag and drop or click to select file
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Supported: PDF, DOC, TXT, JPG, PNG, MP3, MP4, ZIP
-                        </p>
-                      </label>
-                      
-                      {uploadedFile && (
-                        <div className="mt-4 p-3 bg-success/10 rounded-lg">
-                          <div className="flex items-center justify-center space-x-2">
-                            <FileText className="h-5 w-5 text-success" />
-                            <span className="text-success font-medium">{uploadedFile.name}</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <Button 
-                  variant="outline" 
-                  onClick={handlePrevious}
-                  disabled={currentStep === 0}
-                >
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Previous
-                </Button>
-
-                <div className="flex items-center space-x-2">
-                  {currentQuestion.required && (
-                    <span className="text-xs text-muted-foreground">* Required</span>
-                  )}
-                </div>
-
-                <Button 
-                  onClick={handleNext}
-                  disabled={currentQuestion.required && !currentAnswer.trim()}
-                  className="px-8"
-                >
-                  {currentStep === copyrightQuestions.length - 1 ? (
-                    <>
-                      Complete Interview
-                      <CheckCircle className="ml-2 h-4 w-4" />
-                    </>
-                  ) : (
-                    <>
-                      Continue
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </>
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="mt-6 text-center">
+        <div className="space-y-2">
+          <Label>Upload Work Files</Label>
+          <div
+            className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center cursor-pointer hover:border-muted-foreground/50 transition-colors"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">
-              📝 Upload your work file for the most accurate copyright registration
+              Click to upload files or drag and drop
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Supports documents, images, audio, video, and code files
             </p>
           </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={handleFileUpload}
+            accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.mp3,.wav,.mp4,.mov,.zip,.py,.js,.html,.css"
+          />
         </div>
+
+        {files.length > 0 && (
+          <div className="space-y-2">
+            <Label>Uploaded Files</Label>
+            <div className="space-y-2">
+              {files.map((file, index) => {
+                const IconComponent = getFileIcon(file.file.type);
+                return (
+                  <div key={index} className="flex items-center gap-3 p-3 border rounded-lg">
+                    <IconComponent className="h-5 w-5 text-muted-foreground" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{file.file.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {(file.file.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                    {file.uploaded && (
+                      <div className="text-xs text-green-600">Uploaded</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <Button 
+          onClick={() => setCurrentStep(2)} 
+          className="w-full"
+          disabled={!formData.workTitle || files.length === 0}
+        >
+          Continue to Author Information
+        </Button>
+      </CardContent>
+    </Card>
+  );
+
+  const renderStep2 = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle>Author & Owner Information</CardTitle>
+        <CardDescription>Provide details about the creator and owner of the work</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="authorName">Author Name</Label>
+            <Input
+              id="authorName"
+              value={formData.authorName}
+              onChange={(e) => setFormData(prev => ({ ...prev, authorName: e.target.value }))}
+              placeholder="Name of the creator"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="authorNationality">Author Nationality</Label>
+            <Select
+              value={formData.authorNationality}
+              onValueChange={(value) => setFormData(prev => ({ ...prev, authorNationality: value }))}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="United States">United States</SelectItem>
+                <SelectItem value="Canada">Canada</SelectItem>
+                <SelectItem value="United Kingdom">United Kingdom</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="ownerName">Copyright Owner Name</Label>
+          <Input
+            id="ownerName"
+            value={formData.ownerName}
+            onChange={(e) => setFormData(prev => ({ ...prev, ownerName: e.target.value }))}
+            placeholder="Name of the copyright owner (may be same as author)"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="ownerAddress">Owner Address</Label>
+          <Textarea
+            id="ownerAddress"
+            value={formData.ownerAddress}
+            onChange={(e) => setFormData(prev => ({ ...prev, ownerAddress: e.target.value }))}
+            placeholder="Full address of the copyright owner"
+            rows={3}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="creationDate">Date of Creation</Label>
+          <Input
+            id="creationDate"
+            type="date"
+            value={formData.creationDate}
+            onChange={(e) => setFormData(prev => ({ ...prev, creationDate: e.target.value }))}
+          />
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="isPublished"
+              checked={formData.isPublished}
+              onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isPublished: !!checked }))}
+            />
+            <Label htmlFor="isPublished">This work has been published</Label>
+          </div>
+
+          {formData.isPublished && (
+            <div className="space-y-2">
+              <Label htmlFor="publicationDate">Date of First Publication</Label>
+              <Input
+                id="publicationDate"
+                type="date"
+                value={formData.publicationDate}
+                onChange={(e) => setFormData(prev => ({ ...prev, publicationDate: e.target.value }))}
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setCurrentStep(1)} className="flex-1">
+            Back
+          </Button>
+          <Button 
+            onClick={classifyWork} 
+            className="flex-1"
+            disabled={loading || !formData.authorName || !formData.ownerName || !formData.creationDate}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Classifying Work...
+              </>
+            ) : (
+              'Classify Work'
+            )}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const renderStep3 = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle>Review & Generate Form</CardTitle>
+        <CardDescription>Review the classification and generate your copyright form</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Work Classification</Label>
+            <div className="p-3 border rounded-lg bg-muted/50">
+              <p className="font-medium">{formData.workType}</p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Nature of Authorship</Label>
+            <div className="p-3 border rounded-lg bg-muted/50">
+              <p className="text-sm">{formData.natureOfAuthorship}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="creativeContribution">Creative Contribution (Optional)</Label>
+          <Textarea
+            id="creativeContribution"
+            value={formData.creativeContribution}
+            onChange={(e) => setFormData(prev => ({ ...prev, creativeContribution: e.target.value }))}
+            placeholder="Describe your specific creative contribution to this work"
+            rows={3}
+          />
+        </div>
+
+        <div className="bg-muted/50 p-4 rounded-lg">
+          <h4 className="font-medium mb-2">Summary</h4>
+          <div className="space-y-1 text-sm">
+            <p><strong>Title:</strong> {formData.workTitle}</p>
+            <p><strong>Type:</strong> {formData.workType}</p>
+            <p><strong>Author:</strong> {formData.authorName}</p>
+            <p><strong>Owner:</strong> {formData.ownerName}</p>
+            <p><strong>Created:</strong> {formData.creationDate}</p>
+            <p><strong>Published:</strong> {formData.isPublished ? `Yes (${formData.publicationDate})` : 'No'}</p>
+            <p><strong>Files:</strong> {files.length} file(s) uploaded</p>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setCurrentStep(2)} className="flex-1">
+            Back
+          </Button>
+          <Button 
+            onClick={generateForm} 
+            className="flex-1"
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Generating Form...
+              </>
+            ) : (
+              'Generate Copyright Form'
+            )}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const steps = [
+    { number: 1, title: 'Work Information', description: 'Upload and describe your work' },
+    { number: 2, title: 'Author & Owner', description: 'Provide creator and ownership details' },
+    { number: 3, title: 'Review & Generate', description: 'Review classification and generate form' }
+  ];
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* Progress Steps */}
+      <div className="flex items-center justify-between">
+        {steps.map((step, index) => (
+          <div key={step.number} className="flex items-center">
+            <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
+              currentStep >= step.number 
+                ? 'bg-primary text-primary-foreground' 
+                : 'bg-muted text-muted-foreground'
+            }`}>
+              {step.number}
+            </div>
+            <div className="ml-3 hidden md:block">
+              <p className={`text-sm font-medium ${
+                currentStep >= step.number ? 'text-foreground' : 'text-muted-foreground'
+              }`}>
+                {step.title}
+              </p>
+              <p className="text-xs text-muted-foreground">{step.description}</p>
+            </div>
+            {index < steps.length - 1 && (
+              <div className={`w-8 h-0.5 mx-4 ${
+                currentStep > step.number ? 'bg-primary' : 'bg-muted'
+              }`} />
+            )}
+          </div>
+        ))}
       </div>
+
+      {/* Step Content */}
+      {currentStep === 1 && renderStep1()}
+      {currentStep === 2 && renderStep2()}
+      {currentStep === 3 && renderStep3()}
     </div>
   );
 };
-
-export default CopyrightInterviewWizard;

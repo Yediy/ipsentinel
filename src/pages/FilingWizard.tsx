@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import PatentInterviewWizard from "@/components/patent/PatentInterviewWizard";
 import PatentReviewPanel from "@/components/patent/PatentReviewPanel";
 import TrademarkInterviewWizard from "@/components/trademark/TrademarkInterviewWizard";
-import CopyrightInterviewWizard from "@/components/copyright/CopyrightInterviewWizard";
+import { CopyrightInterviewWizard } from "@/components/copyright/CopyrightInterviewWizard";
 
 interface PatentData {
   email: string;
@@ -177,7 +177,7 @@ const FilingWizard = () => {
     setWizardMode('payment');
   };
 
-  const handleCopyrightInterviewComplete = (data: CopyrightData) => {
+  const handleCopyrightInterviewComplete = (data: any) => {
     setCopyrightData(data);
     setWizardMode('payment');
   };
@@ -326,7 +326,7 @@ const FilingWizard = () => {
 
   // Render copyright interview wizard
   if (wizardMode === 'copyright-interview') {
-    return <CopyrightInterviewWizard onComplete={handleCopyrightInterviewComplete} />;
+    return <CopyrightInterviewWizard filingId="temp-filing-id" onComplete={handleCopyrightInterviewComplete} />;
   }
 
   return (
