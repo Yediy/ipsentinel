@@ -195,6 +195,41 @@ export type Database = {
         }
         Relationships: []
       }
+      documents: {
+        Row: {
+          created_at: string | null
+          document_kind: string
+          file_hash: string | null
+          file_url: string
+          filing_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string | null
+          document_kind: string
+          file_hash?: string | null
+          file_url: string
+          filing_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string | null
+          document_kind?: string
+          file_hash?: string | null
+          file_url?: string
+          filing_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_filing_id_fkey"
+            columns: ["filing_id"]
+            isOneToOne: false
+            referencedRelation: "filings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       filing_documents: {
         Row: {
           created_at: string
@@ -264,6 +299,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "filing_queue_filing_id_fkey"
+            columns: ["filing_id"]
+            isOneToOne: false
+            referencedRelation: "filings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      filing_sections: {
+        Row: {
+          content: string
+          created_at: string | null
+          filing_id: string
+          id: string
+          order_index: number | null
+          section_key: string
+          updated_at: string | null
+        }
+        Insert: {
+          content?: string
+          created_at?: string | null
+          filing_id: string
+          id?: string
+          order_index?: number | null
+          section_key: string
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          filing_id?: string
+          id?: string
+          order_index?: number | null
+          section_key?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "filing_sections_filing_id_fkey"
             columns: ["filing_id"]
             isOneToOne: false
             referencedRelation: "filings"

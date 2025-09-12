@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { IPGenieWelcome } from './IPGenieWelcome';
-import { AdvancedPatentWizard } from './AdvancedPatentWizard';
+import { IPGeniePatentWizard } from './IPGeniePatentWizard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -107,7 +107,7 @@ export const PatentFilingDashboard: React.FC<PatentFilingDashboardProps> = ({
         </div>
         
         <div className="py-8">
-          <AdvancedPatentWizard 
+          <IPGeniePatentWizard 
             filing_id={currentFilingId}
             onComplete={handleWizardComplete}
           />
