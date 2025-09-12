@@ -17,6 +17,7 @@ import CostCalculator from "./pages/CostCalculator";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCanceled from "./pages/PaymentCanceled";
 import NotFound from "./pages/NotFound";
+import { PatentFilingDashboard } from "./components/patent/PatentFilingDashboard";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/patent-filing" element={<PatentFilingDashboard />} />
             
             {/* Protected Routes with Sidebar */}
             <Route path="/dashboard" element={

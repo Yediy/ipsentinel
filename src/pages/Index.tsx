@@ -31,15 +31,17 @@ const Index = () => {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-              <Link to="/auth">
+              <Link to="/patent-filing">
                 <Button size="lg" variant="secondary" className="bg-white text-primary hover:bg-primary-light hover:text-white text-lg px-8 py-4 shadow-hero">
-                  Start Filing Now
+                  Start Patent Filing
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
-              <Button size="lg" variant="outline" className="text-white border-white hover:bg-white hover:text-primary text-lg px-8 py-4">
-                How It Works
-              </Button>
+              <Link to="/auth">
+                <Button size="lg" variant="outline" className="text-white border-white hover:bg-white hover:text-primary text-lg px-8 py-4">
+                  View All Services
+                </Button>
+              </Link>
             </div>
             
             <div className="text-primary-light">
@@ -182,7 +184,9 @@ const Index = () => {
                       </li>
                     </ul>
                   </div>
-                  <Button variant="outline" className="w-full">Try Free</Button>
+                   <Link to="/patent-filing">
+                     <Button variant="outline" className="w-full">Try IPGenie Free</Button>
+                   </Link>
                 </div>
               </CardContent>
             </Card>
@@ -209,7 +213,9 @@ const Index = () => {
                       </li>
                     </ul>
                   </div>
-                  <Button className="w-full">Choose Basic</Button>
+                   <Link to="/patent-filing">
+                     <Button className="w-full">Start Patent Filing</Button>
+                   </Link>
                 </div>
               </CardContent>
             </Card>
@@ -291,9 +297,9 @@ const Index = () => {
           <p className="text-xl mb-8 text-primary-light max-w-2xl mx-auto">
             Join thousands of creators, inventors, and entrepreneurs who trust IPSentinel with their intellectual property.
           </p>
-          <Link to="/auth">
+          <Link to="/patent-filing">
             <Button size="lg" variant="secondary" className="bg-white text-primary hover:bg-primary-light hover:text-white text-lg px-8 py-4 shadow-hero">
-              Start Your First Filing
+              Try Patent Filing Now
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </Link>

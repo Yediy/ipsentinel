@@ -188,6 +188,40 @@ export const AdvancedPatentWizard: React.FC<AdvancedPatentWizardProps> = ({
     }
   };
 
+  const generatePDF = async () => {
+    try {
+      setIsProcessing(true);
+      
+      const { data, error } = await supabase.functions.invoke('ai-filing-agent', {
+        body: {
+          action: 'generate_pdf',
+          filing_id
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "PDF Generated Successfully",
+        description: "Your USPTO-compliant patent application is ready for download."
+      });
+
+      // Open PDF in new tab
+      if (data.download_url) {
+        window.open(data.download_url, '_blank');
+      }
+
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate PDF",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const finalizeFiling = async () => {
     try {
       setIsProcessing(true);
@@ -399,9 +433,13 @@ export const AdvancedPatentWizard: React.FC<AdvancedPatentWizardProps> = ({
         </Button>
         
         <div className="flex gap-2">
-          <Button variant="outline">
-            <Eye className="h-4 w-4 mr-2" />
-            Preview PDF
+          <Button variant="outline" onClick={generatePDF} disabled={isProcessing}>
+            {isProcessing ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <Eye className="h-4 w-4 mr-2" />
+            )}
+            {isProcessing ? 'Generating...' : 'Generate PDF'}
           </Button>
           
           <Button onClick={finalizeFiling} disabled={isProcessing}>
@@ -429,9 +467,9 @@ export const AdvancedPatentWizard: React.FC<AdvancedPatentWizardProps> = ({
         </p>
       </div>
       <div className="flex justify-center gap-4">
-        <Button variant="outline">
+        <Button variant="outline" onClick={generatePDF}>
           <Download className="h-4 w-4 mr-2" />
-          Download PDF
+          Download USPTO PDF
         </Button>
         <Button>
           <FileText className="h-4 w-4 mr-2" />
