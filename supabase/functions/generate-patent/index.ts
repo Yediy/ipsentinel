@@ -14,7 +14,15 @@ serve(async (req) => {
   }
 
   try {
-    const { title, abstract, description, features, claims, prior_art } = await req.json();
+    const { 
+      filing_id,
+      title, 
+      abstract, 
+      detailed_description, 
+      features, 
+      claims, 
+      prior_art 
+    } = await req.json();
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -35,7 +43,7 @@ serve(async (req) => {
 **Invention Details:**
 Title: ${title}
 Abstract: ${abstract}
-Description: ${description}
+Description: ${detailed_description}
 Key Features: ${features}
 Claims: ${claims}
 Prior Art: ${prior_art}
@@ -180,7 +188,7 @@ Generate the complete patent application document:`;
         sections: {
           title,
           abstract,
-          description,
+          detailed_description,
           features,
           claims,
           prior_art

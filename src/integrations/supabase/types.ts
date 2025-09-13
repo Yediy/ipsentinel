@@ -203,6 +203,7 @@ export type Database = {
           file_url: string
           filing_id: string
           id: string
+          sha256: string | null
         }
         Insert: {
           created_at?: string | null
@@ -211,6 +212,7 @@ export type Database = {
           file_url: string
           filing_id: string
           id?: string
+          sha256?: string | null
         }
         Update: {
           created_at?: string | null
@@ -219,6 +221,7 @@ export type Database = {
           file_url?: string
           filing_id?: string
           id?: string
+          sha256?: string | null
         }
         Relationships: [
           {
@@ -346,49 +349,97 @@ export type Database = {
       }
       filings: {
         Row: {
+          abstract: string | null
+          background: string | null
+          claims: string | null
+          cn_type: Database["public"]["Enums"]["cn_type"] | null
           components: Json | null
           contact_email: string | null
           country: string
           created_at: string
+          detailed_description: string | null
+          features: string | null
           generated_content: Json | null
           id: string
+          paris_deadline: string | null
           payment_status: string | null
+          pct_national_deadline: string | null
+          prior_art: string | null
           problem: string | null
           solution: string | null
           status: string
+          summary: string | null
           title: string
+          tm_classes: Json | null
+          tm_cn_subclasses: Json | null
+          tm_mark_image_url: string | null
+          tm_mark_text: string | null
+          tm_mark_type: Database["public"]["Enums"]["mark_type"] | null
+          tm_specimens: Json | null
           type: string
           updated_at: string
           user_id: string | null
         }
         Insert: {
+          abstract?: string | null
+          background?: string | null
+          claims?: string | null
+          cn_type?: Database["public"]["Enums"]["cn_type"] | null
           components?: Json | null
           contact_email?: string | null
           country: string
           created_at?: string
+          detailed_description?: string | null
+          features?: string | null
           generated_content?: Json | null
           id?: string
+          paris_deadline?: string | null
           payment_status?: string | null
+          pct_national_deadline?: string | null
+          prior_art?: string | null
           problem?: string | null
           solution?: string | null
           status?: string
+          summary?: string | null
           title: string
+          tm_classes?: Json | null
+          tm_cn_subclasses?: Json | null
+          tm_mark_image_url?: string | null
+          tm_mark_text?: string | null
+          tm_mark_type?: Database["public"]["Enums"]["mark_type"] | null
+          tm_specimens?: Json | null
           type: string
           updated_at?: string
           user_id?: string | null
         }
         Update: {
+          abstract?: string | null
+          background?: string | null
+          claims?: string | null
+          cn_type?: Database["public"]["Enums"]["cn_type"] | null
           components?: Json | null
           contact_email?: string | null
           country?: string
           created_at?: string
+          detailed_description?: string | null
+          features?: string | null
           generated_content?: Json | null
           id?: string
+          paris_deadline?: string | null
           payment_status?: string | null
+          pct_national_deadline?: string | null
+          prior_art?: string | null
           problem?: string | null
           solution?: string | null
           status?: string
+          summary?: string | null
           title?: string
+          tm_classes?: Json | null
+          tm_cn_subclasses?: Json | null
+          tm_mark_image_url?: string | null
+          tm_mark_text?: string | null
+          tm_mark_type?: Database["public"]["Enums"]["mark_type"] | null
+          tm_specimens?: Json | null
           type?: string
           updated_at?: string
           user_id?: string | null
@@ -656,7 +707,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      cn_type: "invention" | "utility_model" | "design"
+      mark_type: "word" | "device" | "combined"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -783,6 +835,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      cn_type: ["invention", "utility_model", "design"],
+      mark_type: ["word", "device", "combined"],
+    },
   },
 } as const

@@ -22,7 +22,7 @@ export const IPGeniePatentWizard: React.FC<PatentWizardProps> = ({
   const [form, setForm] = useState({
     title: "",
     abstract: "",
-    description: "",
+    detailed_description: "",
     claims: "",
     features: "",
     prior_art: ""
@@ -31,7 +31,7 @@ export const IPGeniePatentWizard: React.FC<PatentWizardProps> = ({
   const steps = [
     {
       label: "Describe Your Invention",
-      field: "description" as keyof typeof form,
+      field: "detailed_description" as keyof typeof form,
       placeholder: "What does your invention do and how does it work? Be as detailed as possible.",
       description: "Start by explaining your invention in simple terms. What problem does it solve?"
     },
@@ -71,18 +71,14 @@ export const IPGeniePatentWizard: React.FC<PatentWizardProps> = ({
     setForm(prev => ({ ...prev, [field]: value }));
   };
 
-  const saveSection = async (sectionKey: string, content: string) => {
+  const saveSection = async (field: keyof typeof form, content: string) => {
     try {
       const { error } = await supabase
-        .from('filing_sections')
-        .upsert({
-          filing_id,
-          section_key: sectionKey,
-          content,
-          order_index: step
-        }, {
-          onConflict: 'filing_id,section_key'
-        });
+        .from('filings')
+        .update({
+          [field]: content
+        })
+        .eq('id', filing_id);
 
       if (error) throw error;
     } catch (error: any) {
@@ -121,12 +117,16 @@ export const IPGeniePatentWizard: React.FC<PatentWizardProps> = ({
       const currentStep = steps[step];
       await saveSection(currentStep.field, form[currentStep.field]);
 
-      // Call AI agent to generate patent
-      const { data, error } = await supabase.functions.invoke('ai-filing-agent', {
+      // Call generate-patent function with new field names
+      const { data, error } = await supabase.functions.invoke('generate-patent', {
         body: {
-          action: 'generate_patent',
           filing_id,
-          sections: form
+          title: form.title,
+          abstract: form.abstract,
+          detailed_description: form.detailed_description,
+          features: form.features,
+          claims: form.claims,
+          prior_art: form.prior_art
         }
       });
 
