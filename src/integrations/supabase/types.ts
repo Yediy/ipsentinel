@@ -195,6 +195,41 @@ export type Database = {
         }
         Relationships: []
       }
+      deadlines: {
+        Row: {
+          created_at: string | null
+          done: boolean | null
+          due_on: string
+          filing_id: string
+          id: string
+          label: string
+        }
+        Insert: {
+          created_at?: string | null
+          done?: boolean | null
+          due_on: string
+          filing_id: string
+          id?: string
+          label: string
+        }
+        Update: {
+          created_at?: string | null
+          done?: boolean | null
+          due_on?: string
+          filing_id?: string
+          id?: string
+          label?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deadlines_filing_id_fkey"
+            columns: ["filing_id"]
+            isOneToOne: false
+            referencedRelation: "filings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           created_at: string | null
@@ -350,6 +385,9 @@ export type Database = {
       filings: {
         Row: {
           abstract: string | null
+          agent_assigned: boolean | null
+          agent_contact: string | null
+          agent_required: boolean | null
           background: string | null
           claims: string | null
           cn_type: Database["public"]["Enums"]["cn_type"] | null
@@ -361,11 +399,15 @@ export type Database = {
           features: string | null
           generated_content: Json | null
           id: string
+          language: string | null
+          needs_translation: boolean | null
           paris_deadline: string | null
           payment_status: string | null
+          pct_app_no: string | null
           pct_national_deadline: string | null
           prior_art: string | null
           problem: string | null
+          route: Database["public"]["Enums"]["filing_route"] | null
           solution: string | null
           status: string
           summary: string | null
@@ -376,12 +418,16 @@ export type Database = {
           tm_mark_text: string | null
           tm_mark_type: Database["public"]["Enums"]["mark_type"] | null
           tm_specimens: Json | null
+          translation_status: string | null
           type: string
           updated_at: string
           user_id: string | null
         }
         Insert: {
           abstract?: string | null
+          agent_assigned?: boolean | null
+          agent_contact?: string | null
+          agent_required?: boolean | null
           background?: string | null
           claims?: string | null
           cn_type?: Database["public"]["Enums"]["cn_type"] | null
@@ -393,11 +439,15 @@ export type Database = {
           features?: string | null
           generated_content?: Json | null
           id?: string
+          language?: string | null
+          needs_translation?: boolean | null
           paris_deadline?: string | null
           payment_status?: string | null
+          pct_app_no?: string | null
           pct_national_deadline?: string | null
           prior_art?: string | null
           problem?: string | null
+          route?: Database["public"]["Enums"]["filing_route"] | null
           solution?: string | null
           status?: string
           summary?: string | null
@@ -408,12 +458,16 @@ export type Database = {
           tm_mark_text?: string | null
           tm_mark_type?: Database["public"]["Enums"]["mark_type"] | null
           tm_specimens?: Json | null
+          translation_status?: string | null
           type: string
           updated_at?: string
           user_id?: string | null
         }
         Update: {
           abstract?: string | null
+          agent_assigned?: boolean | null
+          agent_contact?: string | null
+          agent_required?: boolean | null
           background?: string | null
           claims?: string | null
           cn_type?: Database["public"]["Enums"]["cn_type"] | null
@@ -425,11 +479,15 @@ export type Database = {
           features?: string | null
           generated_content?: Json | null
           id?: string
+          language?: string | null
+          needs_translation?: boolean | null
           paris_deadline?: string | null
           payment_status?: string | null
+          pct_app_no?: string | null
           pct_national_deadline?: string | null
           prior_art?: string | null
           problem?: string | null
+          route?: Database["public"]["Enums"]["filing_route"] | null
           solution?: string | null
           status?: string
           summary?: string | null
@@ -440,6 +498,7 @@ export type Database = {
           tm_mark_text?: string | null
           tm_mark_type?: Database["public"]["Enums"]["mark_type"] | null
           tm_specimens?: Json | null
+          translation_status?: string | null
           type?: string
           updated_at?: string
           user_id?: string | null
@@ -708,6 +767,7 @@ export type Database = {
     }
     Enums: {
       cn_type: "invention" | "utility_model" | "design"
+      filing_route: "national" | "pct" | "paris" | "madrid"
       mark_type: "word" | "device" | "combined"
     }
     CompositeTypes: {
@@ -837,6 +897,7 @@ export const Constants = {
   public: {
     Enums: {
       cn_type: ["invention", "utility_model", "design"],
+      filing_route: ["national", "pct", "paris", "madrid"],
       mark_type: ["word", "device", "combined"],
     },
   },
