@@ -37,9 +37,10 @@ const Index = () => {
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
-              <Link to="/auth">
+              <Link to="/international-filing">
                 <Button size="lg" variant="outline" className="text-white border-white hover:bg-white hover:text-primary text-lg px-8 py-4">
-                  View All Services
+                  International Filing
+                  <Globe className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
             </div>
