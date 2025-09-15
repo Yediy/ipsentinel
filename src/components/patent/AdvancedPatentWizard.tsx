@@ -49,7 +49,7 @@ export const AdvancedPatentWizard: React.FC<AdvancedPatentWizardProps> = ({
 }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [conversationFlow, setConversationFlow] = useState<ConversationStep[]>([]);
-  const [responses, setResponses] = useState<Record<string, any>>({});
+  const [responses, setResponses] = useState<Record<string, string>>({});
   const [sessionId, setSessionId] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [aiResponse, setAiResponse] = useState<string>('');
@@ -306,7 +306,7 @@ export const AdvancedPatentWizard: React.FC<AdvancedPatentWizardProps> = ({
 
             {step?.type === 'select' && (
               <Select
-                value={responses[step.id] || ''}
+                value={typeof responses[step.id] === 'string' ? responses[step.id] as string : ''}
                 onValueChange={(value) => setResponses({...responses, [step.id]: value})}
               >
                 <SelectTrigger>

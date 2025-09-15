@@ -35,8 +35,8 @@ interface ClearanceResults {
   search_results: {
     searched_mark: string;
     total_results: number;
-    similar_marks: any[];
-    exact_matches: any[];
+    similar_marks: SearchResult[];
+    exact_matches: SearchResult[];
   };
   risk_assessment: {
     risk_level: 'low' | 'medium' | 'high';
@@ -44,6 +44,17 @@ interface ClearanceResults {
     concerns: string[];
     recommendations: string[];
   };
+}
+
+interface SearchResult {
+  id: string;
+  title: string;
+  description?: string;
+  similarity_score?: number;
+  source?: string;
+  status?: string;
+  mark?: string;
+  owner?: string;
 }
 
 interface AdvancedTrademarkWizardProps {

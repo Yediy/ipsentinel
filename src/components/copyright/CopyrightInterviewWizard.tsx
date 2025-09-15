@@ -95,17 +95,23 @@ export const CopyrightInterviewWizard = ({ filingId, onComplete }: CopyrightInte
         fileData.file_path = filePath;
         fileData.uploaded = true;
         
+        // Generate file hash before upload
+        const arrayBuffer = await fileData.file.arrayBuffer();
+        const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const fileHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        
         uploadedFiles.push({
           filename: fileData.file.name,
           mime_type: fileData.file.type,
           file_size: fileData.file.size,
           file_path: filePath,
-          file_hash: 'placeholder-hash' // TODO: Generate actual hash
+          file_hash: fileHash
         });
         
       } catch (error) {
-        console.error('Error uploading file:', error);
-        toast.error(`Failed to upload ${fileData.file.name}`);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        toast.error(`Failed to upload ${fileData.file.name}: ${errorMessage}`);
       }
     }
     

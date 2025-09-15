@@ -321,7 +321,7 @@ const FilingWizard = () => {
 
   // Render trademark interview wizard
   if (wizardMode === 'trademark-interview') {
-    return <TrademarkInterviewWizard onComplete={handleTrademarkInterviewComplete} />;
+    return <TrademarkInterviewWizard filing_id="temp-filing-id" onComplete={handleTrademarkInterviewComplete} />;
   }
 
   // Render copyright interview wizard

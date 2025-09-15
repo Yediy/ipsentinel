@@ -64,6 +64,7 @@ export type Database = {
       ai_prompt_templates: {
         Row: {
           created_at: string
+          created_by: string | null
           id: string
           input_variables: Json
           is_active: boolean | null
@@ -77,6 +78,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           id?: string
           input_variables?: Json
           is_active?: boolean | null
@@ -90,6 +92,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           id?: string
           input_variables?: Json
           is_active?: boolean | null

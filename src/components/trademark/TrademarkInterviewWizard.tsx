@@ -1,53 +1,161 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Building, ArrowLeft, ArrowRight, Save, Bot, CheckCircle, AlertTriangle, Search } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
+import { Search, CheckCircle, Clock, Sparkles, Brain, ArrowRight, AlertTriangle } from "lucide-react";
+
+// Type definitions for improved type safety across the application
+interface FilingError extends Error {
+  message: string;
+  code?: string;
+}
+
+interface FilingResponse {
+  data: any;
+  error: FilingError | null;
+}
+
+interface SearchResult {
+  id: string;
+  title: string;
+  description: string;
+  similarity_score?: number;
+  source?: string;
+  status?: string;
+}
+
+interface TrademarSearchResults {
+  similar_marks: SearchResult[];
+  exact_matches: SearchResult[];
+  risk_assessment: {
+    level: 'low' | 'medium' | 'high';
+    score: number;
+    concerns: string[];
+    recommendations: string[];
+  };
+}
+
+interface ClassificationResult {
+  suggested_classes: Array<{
+    id: string;
+    name: string;
+    description: string;
+  }>;
+  confidence: number;
+}
+
+interface ErrorHandlerOptions {
+  showToast?: boolean;
+  fallbackMessage?: string;
+  logError?: boolean;
+}
+
+function handleError(
+  error: unknown, 
+  context: string, 
+  options: ErrorHandlerOptions = {}
+): string {
+  const { 
+    showToast = true, 
+    fallbackMessage = 'An unexpected error occurred',
+    logError = true 
+  } = options;
+  
+  let errorMessage = fallbackMessage;
+  
+  if (error instanceof Error) {
+    errorMessage = error.message;
+  } else if (typeof error === 'string') {
+    errorMessage = error;
+  }
+  
+  if (logError) {
+    console.error(`Error in ${context}:`, error);
+  }
+  
+  return errorMessage;
+}
+
+interface PatentFormData {
+  title: string;
+  abstract: string;
+  background: string;
+  summary: string;
+  detailed_description: string;
+  claims: string;
+  features: string;
+  prior_art: string;
+  problem: string;
+  solution: string;
+}
+
+interface FileUploadData {
+  file: File;
+  type: string;
+  description?: string;
+}
 
 interface TrademarkQuestion {
   id: string;
-  type: 'text' | 'textarea' | 'multiple-choice' | 'file-upload';
+  type: 'text' | 'select' | 'textarea' | 'multi-select';
   question: string;
   placeholder?: string;
   options?: string[];
-  required: boolean;
-  followUp?: string;
+  required?: boolean;
+  validation?: (value: string) => boolean;
 }
 
-interface TrademarkData {
-  email: string;
-  markName: string;
-  markType: string;
-  businessDescription: string;
-  goodsServices: string;
-  useInCommerce: string;
-  firstUseDate: string;
-  intendedUse: string;
-  logo?: string;
-  slogan?: string;
-  colors?: string;
-  similarMarks: string;
-  marketingChannels: string;
-  targetAudience: string;
+interface TrademarkInterviewWizardProps {
+  filing_id: string;
+  onComplete: (data: Record<string, string>) => void;
+  onBack?: () => void;
 }
 
-const TrademarkInterviewWizard = ({ 
-  onComplete 
-}: { 
-  onComplete: (data: TrademarkData) => void;
-}) => {
-  const [currentStep, setCurrentStep] = useState(0);
+export const TrademarkInterviewWizard = ({ filing_id, onComplete, onBack }: TrademarkInterviewWizardProps) => {
+  const { toast } = useToast();
+  const [currentQuestion, setCurrentQuestion] = useState(0);
   const [responses, setResponses] = useState<Record<string, string>>({});
   const [currentAnswer, setCurrentAnswer] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [sessionId, setSessionId] = useState<string>("");
+
+  useEffect(() => {
+    const fetchSessionId = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('filings')
+          .select('session_id')
+          .eq('id', filing_id)
+          .single();
+
+        if (error) {
+          throw error;
+        }
+
+        // Session initialized successfully
+        console.log('Session initialized for filing:', filing_id);
+      } catch (error) {
+        console.error('Failed to fetch session ID:', error);
+        toast({
+          title: "Error!",
+          description: "Failed to retrieve session information.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchSessionId();
+  }, [filing_id, toast]);
 
   const trademarkQuestions: TrademarkQuestion[] = [
     {
@@ -58,391 +166,278 @@ const TrademarkInterviewWizard = ({
       required: true
     },
     {
-      id: "markName",
-      type: "text",
-      question: "What is the exact name or text of your trademark?",
-      placeholder: "e.g., TechGuard Pro",
-      required: true,
-      followUp: "This should be exactly as it appears or will appear in your business."
+      id: "owner_type",
+      type: "select", 
+      question: "Are you filing as an individual or as a business entity?",
+      options: ["Individual", "LLC", "Corporation", "Partnership", "Other"],
+      required: true
     },
     {
-      id: "markType",
-      type: "multiple-choice",
-      question: "What type of trademark are you filing?",
+      id: "mark_name",
+      type: "text",
+      question: "What is the exact trademark you want to register?",
+      placeholder: "Enter your trademark name exactly as you want it registered",
+      required: true
+    },
+    {
+      id: "mark_type",
+      type: "select",
+      question: "What type of trademark is this?",
+      options: ["Word Mark", "Design Mark", "Combined Word and Design Mark", "Sound Mark", "Color Mark"],
+      required: true
+    },
+    {
+      id: "goods_services",
+      type: "textarea",
+      question: "Please describe the goods and/or services you'll use this trademark with.",
+      placeholder: "Be specific about your products or services. For example: 'Online retail store services featuring clothing' or 'Computer software for data analysis'",
+      required: true
+    },
+    {
+      id: "filing_basis",
+      type: "select",
+      question: "What is your filing basis?",
       options: [
-        "Word Mark (text only)",
-        "Design Mark (logo/symbol)",
-        "Combined Mark (text + logo)",
-        "Slogan/Tagline",
-        "Sound Mark"
+        "Intent to Use (1(b)) - I plan to use this mark in commerce",
+        "Use in Commerce (1(a)) - I am already using this mark in commerce",
+        "Foreign Application (44(d)) - Based on foreign application",
+        "Foreign Registration (44(e)) - Based on foreign registration"
       ],
       required: true
     },
     {
-      id: "businessDescription",
-      type: "textarea",
-      question: "Describe your business and what you do.",
-      placeholder: "We provide cybersecurity software solutions for small and medium businesses, including threat monitoring, data encryption, and security consulting services...",
-      required: true
-    },
-    {
-      id: "goodsServices",
-      type: "textarea",
-      question: "Specifically, what goods or services will this trademark be used for?",
-      placeholder: "Computer security software; cybersecurity consulting services; data encryption services; network monitoring software; security training programs...",
-      required: true,
-      followUp: "Be as specific as possible. This determines your trademark classes."
-    },
-    {
-      id: "useInCommerce",
-      type: "multiple-choice",
-      question: "How are you currently using this trademark?",
-      options: [
-        "Already using in commerce (selling goods/services)",
-        "Intent to use (plan to use but haven't started yet)",
-        "Used in commerce but not continuously",
-        "Only used for internal purposes so far"
-      ],
-      required: true
-    },
-    {
-      id: "firstUseDate",
+      id: "first_use_date",
       type: "text",
-      question: "When did you first use this mark in commerce? (If applicable)",
-      placeholder: "MM/DD/YYYY or 'Not yet used'",
-      required: false,
-      followUp: "This is the date you first sold goods or provided services using this mark."
+      question: "When did you first use this trademark in commerce? (Leave blank if Intent to Use)",
+      placeholder: "MM/DD/YYYY or 'Not yet used'"
     },
     {
-      id: "marketingChannels",
-      type: "textarea",
-      question: "Where and how do you use this trademark? (Marketing channels, products, etc.)",
-      placeholder: "Website headers, business cards, product packaging, social media accounts, email signatures, storefront signage...",
-      required: true
+      id: "commerce_use_date", 
+      type: "text",
+      question: "When did you first use this trademark in interstate commerce? (Leave blank if Intent to Use)",
+      placeholder: "MM/DD/YYYY or 'Not yet used'"
     },
     {
-      id: "targetAudience",
-      type: "textarea",
-      question: "Who is your target audience or customer base?",
-      placeholder: "Small business owners, IT managers, companies with 10-500 employees, healthcare organizations...",
-      required: true
+      id: "priority_claim",
+      type: "text", 
+      question: "Do you want to claim priority based on an earlier filed foreign application?",
+      placeholder: "Enter foreign application number if applicable, or 'No'"
     },
     {
-      id: "similarMarks",
+      id: "specimen_description",
       type: "textarea",
+      question: "How do you use or plan to use this trademark? Describe how it appears on your products/services.",
+      placeholder: "For example: 'Displayed on product packaging and website header' or 'Used in advertising materials for consulting services'"
+    },
+    {
+      id: "similar_marks",
       question: "Are you aware of any similar trademarks in your industry?",
       placeholder: "List any competitors or similar business names you know of...",
-      required: false,
-      followUp: "We'll also perform a professional search, but your knowledge helps."
+      type: "textarea"
     },
     {
-      id: "colors",
-      type: "text",
-      question: "If this is a design mark, what colors are essential to your trademark?",
-      placeholder: "Red and blue, or 'No color claim'",
-      required: false
-    },
-    {
-      id: "intendedUse",
+      id: "attorney_info",
       type: "textarea",
-      question: "How do you plan to expand the use of this trademark in the future?",
-      placeholder: "Plans for new products, services, markets, or geographic expansion...",
-      required: false
+      question: "Do you have an attorney representing you? If so, please provide their information.",
+      placeholder: "Attorney name, firm, and contact information, or 'None - filing pro se'"
     }
   ];
 
-  useEffect(() => {
-    const id = `trademark_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    setSessionId(id);
-  }, []);
+  const handleSearch = async () => {
+    if (!responses.mark_name) return;
 
-  useEffect(() => {
-    if (Object.keys(responses).length > 0) {
-      localStorage.setItem(`trademark_interview_${sessionId}`, JSON.stringify({
-        responses,
-        currentStep,
-        timestamp: Date.now()
-      }));
-    }
-  }, [responses, currentStep, sessionId]);
-
-  const currentQuestion = trademarkQuestions[currentStep];
-  const progress = ((currentStep + 1) / trademarkQuestions.length) * 100;
-
-  const performTrademarkSearch = async (markName: string) => {
     setIsSearching(true);
     try {
-      // Simulate TESS database search
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Mock search results
-      const mockResults = [
-        {
-          markText: "TechGuard",
-          owner: "Tech Security Inc.",
-          status: "Live",
-          regNumber: "6123456",
-          class: "Class 9 - Computer Software"
-        },
-        {
-          markText: "TechGuardian",
-          owner: "Guardian Technologies",
-          status: "Pending",
-          regNumber: "Application #97789123",
-          class: "Class 42 - Technology Services"
+      const { data, error } = await supabase.functions.invoke('tess-search', {
+        body: { 
+          mark: responses.mark_name,
+          goods_services: responses.goods_services || ""
         }
-      ];
-      
-      setSearchResults(mockResults);
-      
-      if (mockResults.length > 0) {
-        toast.error(`Found ${mockResults.length} potentially conflicting trademarks. Review carefully.`);
-      } else {
-        toast.success("Great news! No direct conflicts found in preliminary search.");
+      });
+
+      if (error) throw error;
+
+      if (data?.results) {
+        setSearchResults(data.results);
       }
+
     } catch (error) {
-      console.error("Search error:", error);
-      toast.error("Search temporarily unavailable. We'll perform a comprehensive search later.");
+      const errorMessage = error instanceof Error ? error.message : 'Search temporarily unavailable. We will perform a comprehensive search later.';
+      toast({
+        title: "Search Error", 
+        description: errorMessage,
+        variant: "destructive"
+      });
     } finally {
       setIsSearching(false);
     }
   };
 
-  const handleNext = async () => {
-    if (currentQuestion.required && !currentAnswer.trim()) {
-      toast.error("This question is required. Please provide an answer.");
+  const handleNext = () => {
+    if (trademarkQuestions[currentQuestion]?.required && !currentAnswer.trim()) {
+      toast({
+        title: "Required Field",
+        description: "This field is required",
+        variant: "destructive"
+      });
       return;
     }
 
-    // Save the response
     setResponses(prev => ({
       ...prev,
-      [currentQuestion.id]: currentAnswer
+      [trademarkQuestions[currentQuestion].id]: currentAnswer
     }));
 
-    // Perform trademark search when mark name is provided
-    if (currentQuestion.id === 'markName' && currentAnswer.trim()) {
-      await performTrademarkSearch(currentAnswer.trim());
-    }
-
-    // Simulate AI processing
-    setIsThinking(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsThinking(false);
-
-    if (currentStep < trademarkQuestions.length - 1) {
-      setCurrentStep(currentStep + 1);
+    if (currentQuestion < trademarkQuestions.length - 1) {
+      setCurrentQuestion(prev => prev + 1);
       setCurrentAnswer("");
-    } else {
-      // Interview complete
-      const trademarkData: TrademarkData = {
-        email: responses.email || "",
-        markName: responses.markName || "",
-        markType: responses.markType || "",
-        businessDescription: responses.businessDescription || "",
-        goodsServices: responses.goodsServices || "",
-        useInCommerce: responses.useInCommerce || "",
-        firstUseDate: responses.firstUseDate || "",
-        intendedUse: responses.intendedUse || "",
-        colors: responses.colors || "",
-        similarMarks: responses.similarMarks || "",
-        marketingChannels: responses.marketingChannels || "",
-        targetAudience: responses.targetAudience || ""
-      };
       
-      onComplete(trademarkData);
+      // Trigger search when we have the mark name
+      if (trademarkQuestions[currentQuestion + 1].id === "similar_marks" && responses.mark_name) {
+        handleSearch();
+      }
+    } else {
+      // Complete the interview
+      const finalResponses = {
+        ...responses,
+        [trademarkQuestions[currentQuestion].id]: currentAnswer
+      };
+      onComplete(finalResponses);
     }
   };
 
-  const handlePrevious = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
-      setCurrentAnswer(responses[trademarkQuestions[currentStep - 1].id] || "");
+  const handleBack = () => {
+    if (currentQuestion > 0) {
+      const prevQuestion = trademarkQuestions[currentQuestion - 1];
+      setCurrentAnswer(responses[prevQuestion.id] || "");
+      setCurrentQuestion(prev => prev - 1);
     }
   };
+
+  const renderInput = () => {
+    const question = trademarkQuestions[currentQuestion];
+    
+    switch (question.type) {
+      case 'select':
+        return (
+          <Select value={currentAnswer} onValueChange={setCurrentAnswer}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select an option..." />
+            </SelectTrigger>
+            <SelectContent>
+              {question.options?.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {option}
+                </SelectItem>
+              ))
+              }
+            </SelectContent>
+          </Select>
+        );
+      
+      case 'textarea':
+        return (
+          <Textarea
+            value={currentAnswer}
+            onChange={(e) => setCurrentAnswer(e.target.value)}
+            placeholder={question.placeholder}
+            className="min-h-[100px]"
+          />
+        );
+      
+      default:
+        return (
+          <Input
+            type={question.id.includes('email') ? 'email' : 'text'}
+            value={currentAnswer}
+            onChange={(e) => setCurrentAnswer(e.target.value)}
+            placeholder={question.placeholder}
+          />
+        );
+    }
+  };
+
+  const progress = ((currentQuestion + 1) / trademarkQuestions.length) * 100;
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="legal-container">
-          <div className="flex items-center justify-between py-6">
-            <div className="flex items-center space-x-2">
-              <Building className="h-8 w-8 text-primary" />
-              <div>
-                <h1 className="text-2xl font-bold text-legal-dark">Trademark Interview</h1>
-                <p className="text-sm text-muted-foreground">AI-guided trademark application</p>
-              </div>
-            </div>
-            <Badge variant="secondary" className="px-3 py-1">
-              Question {currentStep + 1} of {trademarkQuestions.length}
+    <div className="max-w-4xl mx-auto p-6 space-y-6">
+      <div className="text-center">
+        <h1 className="text-3xl font-bold mb-2">Trademark Registration Interview</h1>
+        <p className="text-muted-foreground">Answer a few questions to prepare your trademark application</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-xl">
+              Question {currentQuestion + 1} of {trademarkQuestions.length}
+            </CardTitle>
+            <Badge variant="outline">
+              {Math.round(progress)}% Complete
             </Badge>
           </div>
-        </div>
-      </header>
-
-      <div className="legal-container py-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Interview Progress</span>
-              <span className="text-sm text-muted-foreground">{Math.round(progress)}% Complete</span>
-            </div>
-            <Progress value={progress} className="h-3" />
+          <Progress value={progress} className="w-full" />
+        </CardHeader>
+        
+        <CardContent className="space-y-6">
+          <div>
+            <Label className="text-lg font-medium mb-4 block">
+              {trademarkQuestions[currentQuestion]?.question}
+            </Label>
+            {renderInput()}
           </div>
 
-          <Card className="shadow-feature">
-            <CardContent className="p-8">
-              {isThinking && (
-                <div className="mb-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
-                  <div className="flex items-center space-x-3">
-                    <Bot className="h-5 w-5 text-primary animate-pulse" />
-                    <span className="text-sm text-primary">AI is processing your response...</span>
-                  </div>
-                </div>
-              )}
-
-              {isSearching && (
-                <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="flex items-center space-x-3">
-                    <Search className="h-5 w-5 text-blue-600 animate-spin" />
-                    <span className="text-sm text-blue-600">Searching USPTO database for conflicts...</span>
-                  </div>
-                </div>
-              )}
-
-              {searchResults.length > 0 && (
-                <div className="mb-6 p-4 bg-orange-50 rounded-lg border border-orange-200">
-                  <div className="flex items-center space-x-3 mb-3">
-                    <AlertTriangle className="h-5 w-5 text-orange-600" />
-                    <span className="text-sm font-semibold text-orange-600">Potential Conflicts Found</span>
-                  </div>
-                  <div className="space-y-2">
+          {/* Show search results if available */}
+          {searchResults.length > 0 && currentQuestion === trademarkQuestions.findIndex(q => q.id === "similar_marks") && (
+            <Alert>
+              <Search className="h-4 w-4" />
+              <AlertDescription>
+                <div className="mt-2">
+                  <p className="font-medium mb-2">We found {searchResults.length} potentially similar trademarks:</p>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
                     {searchResults.map((result, index) => (
-                      <div key={index} className="text-xs bg-white p-2 rounded border">
-                        <strong>{result.markText}</strong> - {result.owner} ({result.status})
-                        <br />
-                        <span className="text-muted-foreground">{result.class}</span>
+                      <div key={result.id || index} className="p-2 bg-muted/50 rounded text-sm">
+                        <div className="font-medium">{result.title}</div>
+                        {result.description && (
+                          <div className="text-muted-foreground">{result.description}</div>
+                        )}
                       </div>
                     ))}
                   </div>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Don't worry - our legal experts will conduct a comprehensive clearance search and help you navigate any potential conflicts.
+                  </p>
                 </div>
-              )}
+              </AlertDescription>
+            </Alert>
+          )}
 
-              <div className="mb-8">
-                <div className="flex items-start space-x-4 mb-6">
-                  <div className="bg-primary/10 p-3 rounded-full">
-                    <Bot className="h-6 w-6 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <h2 className="text-xl font-semibold text-legal-dark mb-2">
-                      {currentQuestion.question}
-                    </h2>
-                    {currentQuestion.followUp && (
-                      <p className="text-muted-foreground text-sm">
-                        {currentQuestion.followUp}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="ml-16">
-                  {currentQuestion.type === 'text' && (
-                    <Input
-                      value={currentAnswer}
-                      onChange={(e) => setCurrentAnswer(e.target.value)}
-                      placeholder={currentQuestion.placeholder}
-                      className="text-lg"
-                      onKeyPress={(e) => e.key === 'Enter' && handleNext()}
-                    />
-                  )}
-
-                  {currentQuestion.type === 'textarea' && (
-                    <Textarea
-                      value={currentAnswer}
-                      onChange={(e) => setCurrentAnswer(e.target.value)}
-                      placeholder={currentQuestion.placeholder}
-                      className="min-h-[120px] text-lg"
-                      rows={4}
-                    />
-                  )}
-
-                  {currentQuestion.type === 'multiple-choice' && currentQuestion.options && (
-                    <div className="space-y-3">
-                      {currentQuestion.options.map((option) => (
-                        <div
-                          key={option}
-                          className={`border-2 rounded-lg p-4 cursor-pointer transition-all hover:shadow-card ${
-                            currentAnswer === option 
-                              ? 'border-primary bg-primary/5' 
-                              : 'border-border hover:border-primary/50'
-                          }`}
-                          onClick={() => setCurrentAnswer(option)}
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div className={`w-4 h-4 rounded-full border-2 ${
-                              currentAnswer === option 
-                                ? 'bg-primary border-primary' 
-                                : 'border-border'
-                            }`}>
-                              {currentAnswer === option && (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <div className="w-2 h-2 bg-white rounded-full"></div>
-                                </div>
-                              )}
-                            </div>
-                            <span className="text-base">{option}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <Button 
-                  variant="outline" 
-                  onClick={handlePrevious}
-                  disabled={currentStep === 0}
-                >
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Previous
-                </Button>
-
-                <div className="flex items-center space-x-2">
-                  {currentQuestion.required && (
-                    <span className="text-xs text-muted-foreground">* Required</span>
-                  )}
-                </div>
-
-                <Button 
-                  onClick={handleNext}
-                  disabled={currentQuestion.required && !currentAnswer.trim()}
-                  className="px-8"
-                >
-                  {currentStep === trademarkQuestions.length - 1 ? (
-                    <>
-                      Complete Interview
-                      <CheckCircle className="ml-2 h-4 w-4" />
-                    </>
-                  ) : (
-                    <>
-                      Continue
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </>
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="mt-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              🔍 We perform live USPTO database searches to check for conflicts
-            </p>
+          <div className="flex gap-4">
+            {currentQuestion > 0 && (
+              <Button variant="outline" onClick={handleBack}>
+                Back
+              </Button>
+            )}
+            
+            <Button 
+              onClick={handleNext}
+              className="ml-auto"
+              disabled={trademarkQuestions[currentQuestion]?.required && !currentAnswer.trim()}
+            >
+              {currentQuestion === trademarkQuestions.length - 1 ? 'Complete Interview' : 'Next'}
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {onBack && (
+        <div className="text-center">
+          <Button variant="ghost" onClick={onBack}>
+            ← Back to Filing Options
+          </Button>
         </div>
-      </div>
+      )}
     </div>
   );
 };
