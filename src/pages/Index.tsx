@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Shield, Brain, Clock, CheckCircle, Star, Users, Award, User, LogIn, UserPlus, Zap, Globe } from "lucide-react";
+import { ArrowRight, Shield, Brain, Clock, CheckCircle, Star, Users, Award, User, LogIn, UserPlus, Zap, Globe, FileImage } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 
@@ -55,6 +55,12 @@ const Index = () => {
           <Button size="lg" variant="outline" className="text-white border-white hover:bg-white hover:text-primary text-lg px-8 py-4">
             Start New Filing
             <ArrowRight className="ml-2 h-5 w-5" />
+          </Button>
+        </Link>
+        <Link to="/drawings-demo">
+          <Button size="lg" variant="outline" className="text-white border-white hover:bg-white hover:text-primary text-lg px-8 py-4">
+            <FileImage className="mr-2 h-5 w-5" />
+            Patent Drawings
           </Button>
         </Link>
       </div>
