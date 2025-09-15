@@ -236,30 +236,27 @@ export type Database = {
       documents: {
         Row: {
           created_at: string | null
-          document_kind: string
-          file_hash: string | null
-          file_url: string
           filing_id: string
           id: string
+          kind: Database["public"]["Enums"]["doc_kind"]
           sha256: string | null
+          url: string
         }
         Insert: {
           created_at?: string | null
-          document_kind: string
-          file_hash?: string | null
-          file_url: string
           filing_id: string
           id?: string
+          kind?: Database["public"]["Enums"]["doc_kind"]
           sha256?: string | null
+          url?: string
         }
         Update: {
           created_at?: string | null
-          document_kind?: string
-          file_hash?: string | null
-          file_url?: string
           filing_id?: string
           id?: string
+          kind?: Database["public"]["Enums"]["doc_kind"]
           sha256?: string | null
+          url?: string
         }
         Relationships: [
           {
@@ -397,6 +394,7 @@ export type Database = {
           components: Json | null
           contact_email: string | null
           country: string
+          country_code: string
           created_at: string
           detailed_description: string | null
           features: string | null
@@ -409,6 +407,7 @@ export type Database = {
           pct_app_no: string | null
           pct_national_deadline: string | null
           prior_art: string | null
+          priority_date: string | null
           problem: string | null
           route: Database["public"]["Enums"]["filing_route"] | null
           solution: string | null
@@ -437,6 +436,7 @@ export type Database = {
           components?: Json | null
           contact_email?: string | null
           country: string
+          country_code?: string
           created_at?: string
           detailed_description?: string | null
           features?: string | null
@@ -449,6 +449,7 @@ export type Database = {
           pct_app_no?: string | null
           pct_national_deadline?: string | null
           prior_art?: string | null
+          priority_date?: string | null
           problem?: string | null
           route?: Database["public"]["Enums"]["filing_route"] | null
           solution?: string | null
@@ -477,6 +478,7 @@ export type Database = {
           components?: Json | null
           contact_email?: string | null
           country?: string
+          country_code?: string
           created_at?: string
           detailed_description?: string | null
           features?: string | null
@@ -489,6 +491,7 @@ export type Database = {
           pct_app_no?: string | null
           pct_national_deadline?: string | null
           prior_art?: string | null
+          priority_date?: string | null
           problem?: string | null
           route?: Database["public"]["Enums"]["filing_route"] | null
           solution?: string | null
@@ -595,40 +598,40 @@ export type Database = {
       }
       payments: {
         Row: {
-          amount: number
+          amount_cents: number | null
           created_at: string
           currency: string
           filing_id: string
           id: string
-          plan: string
+          provider: string
+          raw_payload: Json | null
+          session_id: string | null
           status: string
-          stripe_session_id: string | null
           updated_at: string
-          user_id: string | null
         }
         Insert: {
-          amount: number
+          amount_cents?: number | null
           created_at?: string
           currency?: string
           filing_id: string
           id?: string
-          plan: string
+          provider?: string
+          raw_payload?: Json | null
+          session_id?: string | null
           status?: string
-          stripe_session_id?: string | null
           updated_at?: string
-          user_id?: string | null
         }
         Update: {
-          amount?: number
+          amount_cents?: number | null
           created_at?: string
           currency?: string
           filing_id?: string
           id?: string
-          plan?: string
+          provider?: string
+          raw_payload?: Json | null
+          session_id?: string | null
           status?: string
-          stripe_session_id?: string | null
           updated_at?: string
-          user_id?: string | null
         }
         Relationships: [
           {
@@ -644,21 +647,27 @@ export type Database = {
         Row: {
           created_at: string
           email: string
+          full_name: string | null
           id: string
+          role: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
           email: string
+          full_name?: string | null
           id?: string
+          role?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
           email?: string
+          full_name?: string | null
           id?: string
+          role?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -763,14 +772,42 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      upcoming_deadlines: {
+        Row: {
+          country_code: string | null
+          created_at: string | null
+          done: boolean | null
+          due_on: string | null
+          filing_id: string | null
+          id: string | null
+          label: string | null
+          route: Database["public"]["Enums"]["filing_route"] | null
+          type: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deadlines_filing_id_fkey"
+            columns: ["filing_id"]
+            isOneToOne: false
+            referencedRelation: "filings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
-      [_ in never]: never
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
     }
     Enums: {
       cn_type: "invention" | "utility_model" | "design"
+      doc_kind: "pdf" | "docx" | "xml"
       filing_route: "national" | "pct" | "paris" | "madrid"
+      filing_status: "draft" | "ready" | "submitted" | "filed" | "rejected"
+      filing_type: "patent" | "trademark" | "copyright"
       mark_type: "word" | "device" | "combined"
     }
     CompositeTypes: {
@@ -900,7 +937,10 @@ export const Constants = {
   public: {
     Enums: {
       cn_type: ["invention", "utility_model", "design"],
+      doc_kind: ["pdf", "docx", "xml"],
       filing_route: ["national", "pct", "paris", "madrid"],
+      filing_status: ["draft", "ready", "submitted", "filed", "rejected"],
+      filing_type: ["patent", "trademark", "copyright"],
       mark_type: ["word", "device", "combined"],
     },
   },
