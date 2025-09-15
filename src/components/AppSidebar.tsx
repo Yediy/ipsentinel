@@ -81,16 +81,21 @@ export function AppSidebar() {
 
   const handleSignOut = async () => {
     try {
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
       toast({
         title: "Signed out successfully",
-        description: "You have been logged out of your account."
+        description: "You have been logged out of your account.",
       });
+      
+      // Navigate to home page
       navigate('/');
     } catch (error) {
+      console.error('Sign out error:', error);
       toast({
-        title: "Error",
-        description: "Failed to sign out. Please try again.",
+        title: "Error signing out",
+        description: "There was a problem signing out. Please try again.",
         variant: "destructive"
       });
     }

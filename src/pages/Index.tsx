@@ -1,10 +1,107 @@
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Shield, Zap, Globe, Users, CheckCircle, ArrowRight } from "lucide-react";
-import { Link } from "react-router-dom";
-import SpaceBackground from "@/components/SpaceBackground";
+import { Badge } from "@/components/ui/badge";
+import { ArrowRight, Shield, Brain, Clock, CheckCircle, Star, Users, Award, User, LogIn, UserPlus, Zap, Globe } from "lucide-react";
+import { supabase } from '@/integrations/supabase/client';
+import { User as SupabaseUser } from '@supabase/supabase-js';
 
 const Index = () => {
+  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check initial auth state
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user || null);
+      setLoading(false);
+    };
+
+    checkAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user || null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const AuthenticatedHeader = () => (
+    <div className="text-center space-y-4 mb-12">
+      <div className="inline-flex items-center space-x-2 bg-white/10 rounded-full px-4 py-2 mb-4">
+        <User className="h-4 w-4 text-white" />
+        <span className="text-sm font-medium text-white">Welcome back, {user?.email}</span>
+      </div>
+      <h1 className="text-4xl lg:text-6xl font-bold mb-6 leading-tight text-white">
+        Ready to Protect Your IP?
+      </h1>
+      <p className="text-xl lg:text-2xl mb-8 text-primary-light max-w-3xl mx-auto">
+        Continue managing your intellectual property filings with AI-powered assistance.
+      </p>
+      <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+        <Link to="/dashboard">
+          <Button size="lg" variant="secondary" className="bg-white text-primary hover:bg-primary-light hover:text-white text-lg px-8 py-4 shadow-hero">
+            <Shield className="mr-2 h-5 w-5" />
+            Go to Dashboard
+            <ArrowRight className="ml-2 h-5 w-5" />
+          </Button>
+        </Link>
+        <Link to="/filing/wizard">
+          <Button size="lg" variant="outline" className="text-white border-white hover:bg-white hover:text-primary text-lg px-8 py-4">
+            Start New Filing
+            <ArrowRight className="ml-2 h-5 w-5" />
+          </Button>
+        </Link>
+      </div>
+    </div>
+  );
+
+  const UnauthenticatedHeader = () => (
+    <div className="text-center space-y-4 mb-12">
+      <h1 className="text-4xl lg:text-6xl font-bold mb-6 leading-tight">
+        File Patents, Trademarks & Copyrights in Minutes<br />
+        <span className="text-primary-light">— Without a Lawyer</span>
+      </h1>
+      
+      <p className="text-xl lg:text-2xl mb-8 text-primary-light max-w-3xl mx-auto">
+        AI-powered IP filing for inventors, creators, and entrepreneurs.
+      </p>
+      
+      <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+        <Link to="/auth">
+          <Button size="lg" variant="secondary" className="bg-white text-primary hover:bg-primary-light hover:text-white text-lg px-8 py-4 shadow-hero">
+            <UserPlus className="mr-2 h-5 w-5" />
+            Get Started Free
+            <ArrowRight className="ml-2 h-5 w-5" />
+          </Button>
+        </Link>
+        <Link to="/auth">
+          <Button size="lg" variant="outline" className="text-white border-white hover:bg-white hover:text-primary text-lg px-8 py-4">
+            <LogIn className="mr-2 h-5 w-5" />
+            Sign In
+          </Button>
+        </Link>
+      </div>
+      
+      <div className="text-primary-light">
+        <p className="text-sm">✓ File in minutes, not months  ✓ $49-$199 flat fees  ✓ AI-powered legal drafting</p>
+      </div>
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-transparent relative">
       {/* Hero Section */}
@@ -21,268 +118,172 @@ const Index = () => {
               </div>
             </div>
             
-            <h1 className="text-4xl lg:text-6xl font-bold mb-6 leading-tight">
-              File Patents, Trademarks & Copyrights in Minutes<br />
-              <span className="text-primary-light">— Without a Lawyer</span>
-            </h1>
-            
-            <p className="text-xl lg:text-2xl mb-8 text-primary-light max-w-3xl mx-auto">
-              AI-powered IP filing for inventors, creators, and entrepreneurs.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-              <Link to="/patent-filing">
-                <Button size="lg" variant="secondary" className="bg-white text-primary hover:bg-primary-light hover:text-white text-lg px-8 py-4 shadow-hero">
-                  Start Patent Filing
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-              <Link to="/international-filing">
-                <Button size="lg" variant="outline" className="text-white border-white hover:bg-white hover:text-primary text-lg px-8 py-4">
-                  International Filing
-                  <Globe className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-            </div>
-            
-            <div className="text-primary-light">
-              <p className="text-sm">✓ File in minutes, not months  ✓ $49-$199 flat fees  ✓ AI-powered legal drafting</p>
-            </div>
+            {/* Conditional Header based on authentication status */}
+            {user ? <AuthenticatedHeader /> : <UnauthenticatedHeader />}
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section className="legal-section">
+      <section className="legal-section bg-background">
         <div className="legal-container">
           <div className="text-center mb-16">
-            <h2 className="text-3xl lg:text-5xl font-bold text-legal-dark mb-6">
-              Why Choose AI-Powered IP Filing?
-            </h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Finally, IP law for the people. No gatekeeping, no $500/hour attorneys, no months of waiting.
+            <h2 className="text-3xl font-bold mb-4">Why Choose IPSentinel?</h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Professional-grade IP protection with the speed and affordability of AI automation.
             </p>
           </div>
-
-          <div className="grid md:grid-cols-3 gap-8 mb-16">
-            <Card className="shadow-feature border-0 gradient-feature hover:shadow-lg transition-all duration-300 hover:scale-105">
-              <CardContent className="p-8 text-center">
-                <div className="bg-primary/10 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                  <Zap className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="text-2xl font-bold mb-4">📄 Draft & File in Minutes</h3>
-                <p className="text-muted-foreground">
-                  Our AI generates patent claims, trademark applications, and copyright filings in USPTO-compliant format instantly.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-feature border-0 gradient-feature hover:shadow-lg transition-all duration-300 hover:scale-105">
-              <CardContent className="p-8 text-center">
-                <div className="bg-primary/10 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                  <Shield className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="text-2xl font-bold mb-4">🧠 AI-Powered Accuracy</h3>
-                <p className="text-muted-foreground">
-                  Trained on thousands of successful filings, our AI ensures your applications meet all legal requirements.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-feature border-0 gradient-feature hover:shadow-lg transition-all duration-300 hover:scale-105">
-              <CardContent className="p-8 text-center">
-                <div className="bg-primary/10 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="text-2xl font-bold mb-4">💰 Transparent Pricing</h3>
-                <p className="text-muted-foreground">
-                  No hidden fees, no hourly billing. See exactly what you'll pay before you start.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works Section */}
-      <section className="legal-section bg-card">
-        <div className="legal-container">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl lg:text-5xl font-bold text-legal-dark mb-6">
-              How It Works
-            </h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Three simple steps to protect your intellectual property
-            </p>
-          </div>
-
+          
           <div className="grid md:grid-cols-3 gap-8">
-            <div className="text-center group">
-              <div className="bg-gradient-to-br from-primary to-primary-dark text-primary-foreground rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6 text-3xl font-bold shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
-                1️⃣
-              </div>
-              <h3 className="text-2xl font-bold mb-4">Describe your idea</h3>
-              <p className="text-muted-foreground">
-                Our smart wizard asks about your creation and determines the best protection strategy.
-              </p>
-            </div>
+            <Card className="legal-card">
+              <CardContent className="legal-card-content">
+                <div className="bg-primary/10 rounded-full p-3 w-fit mb-4">
+                  <Brain className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">AI-Powered Drafting</h3>
+                <p className="text-muted-foreground">
+                  Our AI analyzes your invention and creates professional patent applications that meet USPTO standards.
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card className="legal-card">
+              <CardContent className="legal-card-content">
+                <div className="bg-primary/10 rounded-full p-3 w-fit mb-4">
+                  <Clock className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">File in Minutes</h3>
+                <p className="text-muted-foreground">
+                  Complete your filing in under 30 minutes. No more waiting weeks or months for attorney drafts.
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card className="legal-card">
+              <CardContent className="legal-card-content">
+                <div className="bg-primary/10 rounded-full p-3 w-fit mb-4">
+                  <Shield className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Expert Review</h3>
+                <p className="text-muted-foreground">
+                  All applications are reviewed by licensed patent attorneys before filing with the USPTO.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
 
-            <div className="text-center group">
-              <div className="bg-gradient-to-br from-primary to-primary-dark text-primary-foreground rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6 text-3xl font-bold shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
-                2️⃣
-              </div>
-              <h3 className="text-2xl font-bold mb-4">AI prepares your IP documents</h3>
-              <p className="text-muted-foreground">
-                Our AI creates USPTO-compliant patent claims, trademark applications, or copyright filings.
-              </p>
+      {/* Stats Section */}
+      <section className="legal-section bg-muted/30">
+        <div className="legal-container">
+          <div className="grid md:grid-cols-4 gap-8 text-center">
+            <div>
+              <div className="text-3xl font-bold text-primary mb-2">15,000+</div>
+              <div className="text-muted-foreground">Applications Filed</div>
             </div>
-
-            <div className="text-center group">
-              <div className="bg-gradient-to-br from-primary to-primary-dark text-primary-foreground rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6 text-3xl font-bold shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
-                3️⃣
-              </div>
-              <h3 className="text-2xl font-bold mb-4">Submit to USPTO/USCO</h3>
-              <p className="text-muted-foreground">
-                We submit your application and provide real-time status updates until approval.
-              </p>
+            <div>
+              <div className="text-3xl font-bold text-primary mb-2">98%</div>
+              <div className="text-muted-foreground">Client Satisfaction</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-primary mb-2">30 min</div>
+              <div className="text-muted-foreground">Average Filing Time</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-primary mb-2">24/7</div>
+              <div className="text-muted-foreground">AI Assistant Available</div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section className="legal-section bg-muted">
+      {/* Services Section */}
+      <section className="legal-section bg-background">
         <div className="legal-container">
           <div className="text-center mb-16">
-            <h2 className="text-3xl lg:text-5xl font-bold text-legal-dark mb-6">
-              Transparent Pricing
-            </h2>
-            <p className="text-xl text-muted-foreground">
-              No hidden fees. No hourly rates. Just flat, fair pricing.
+            <h2 className="text-3xl font-bold mb-4">Our Services</h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Comprehensive intellectual property protection for all your innovations.
             </p>
           </div>
-
-          <div className="grid md:grid-cols-4 gap-8">
-            <Card className="shadow-card hover:shadow-xl transition-all duration-300 hover:scale-105 group">
-              <CardContent className="p-8">
-                <div className="text-center">
-                  <h3 className="text-2xl font-bold mb-2">Free</h3>
-                  <div className="text-4xl font-bold text-primary mb-4">$0</div>
-                  <p className="text-muted-foreground mb-6">Try it out</p>
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 mb-4">
-                    <ul className="space-y-3 text-left">
-                      <li className="flex items-center">
-                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
-                        <span className="text-sm">AI interview demo</span>
-                      </li>
-                      <li className="flex items-center">
-                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
-                        <span className="text-sm">Document preview</span>
-                      </li>
-                      <li className="flex items-center">
-                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
-                        <span className="text-sm">No export</span>
-                      </li>
-                    </ul>
-                  </div>
-                   <Link to="/patent-filing">
-                     <Button variant="outline" className="w-full">Try IPGenie Free</Button>
-                   </Link>
+          
+          <div className="grid md:grid-cols-3 gap-8">
+            <Card className="legal-card hover:shadow-xl transition-shadow">
+              <CardContent className="legal-card-content text-center">
+                <div className="bg-blue-100 rounded-full p-4 w-fit mx-auto mb-4">
+                  <Shield className="h-8 w-8 text-blue-600" />
                 </div>
+                <h3 className="text-xl font-semibold mb-4">Patents</h3>
+                <ul className="text-left space-y-2 mb-6">
+                  <li className="flex items-center"><CheckCircle className="h-4 w-4 text-green-500 mr-2" />Utility Patents</li>
+                  <li className="flex items-center"><CheckCircle className="h-4 w-4 text-green-500 mr-2" />Design Patents</li>
+                  <li className="flex items-center"><CheckCircle className="h-4 w-4 text-green-500 mr-2" />Provisional Applications</li>
+                  <li className="flex items-center"><CheckCircle className="h-4 w-4 text-green-500 mr-2" />PCT Filings</li>
+                </ul>
+                <div className="text-2xl font-bold text-primary mb-2">$199</div>
+                <div className="text-sm text-muted-foreground mb-4">+ USPTO fees</div>
+                {user ? (
+                  <Button asChild className="w-full">
+                    <Link to="/filing/wizard">Start Patent Filing</Link>
+                  </Button>
+                ) : (
+                  <Button asChild className="w-full">
+                    <Link to="/auth">Get Started</Link>
+                  </Button>
+                )}
               </CardContent>
             </Card>
-
-            <Card className="shadow-card hover:shadow-xl transition-all duration-300 hover:scale-105 group">
-              <CardContent className="p-8">
-                <div className="text-center">
-                  <h3 className="text-2xl font-bold mb-2">Basic</h3>
-                  <div className="text-4xl font-bold text-primary mb-4">$49</div>
-                  <p className="text-muted-foreground mb-6">+ Government fees</p>
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 mb-4">
-                    <ul className="space-y-3 text-left">
-                      <li className="flex items-center">
-                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
-                        <span className="text-sm">AI-generated filing</span>
-                      </li>
-                      <li className="flex items-center">
-                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
-                        <span className="text-sm">USPTO compliance check</span>
-                      </li>
-                      <li className="flex items-center">
-                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
-                        <span className="text-sm">Email support</span>
-                      </li>
-                    </ul>
-                  </div>
-                   <Link to="/patent-filing">
-                     <Button className="w-full">Start Patent Filing</Button>
-                   </Link>
+            
+            <Card className="legal-card hover:shadow-xl transition-shadow">
+              <CardContent className="legal-card-content text-center">
+                <div className="bg-green-100 rounded-full p-4 w-fit mx-auto mb-4">
+                  <Award className="h-8 w-8 text-green-600" />
                 </div>
+                <h3 className="text-xl font-semibold mb-4">Trademarks</h3>
+                <ul className="text-left space-y-2 mb-6">
+                  <li className="flex items-center"><CheckCircle className="h-4 w-4 text-green-500 mr-2" />Word Marks</li>
+                  <li className="flex items-center"><CheckCircle className="h-4 w-4 text-green-500 mr-2" />Design Marks</li>
+                  <li className="flex items-center"><CheckCircle className="h-4 w-4 text-green-500 mr-2" />Clearance Search</li>
+                  <li className="flex items-center"><CheckCircle className="h-4 w-4 text-green-500 mr-2" />Madrid Protocol</li>
+                </ul>
+                <div className="text-2xl font-bold text-primary mb-2">$99</div>
+                <div className="text-sm text-muted-foreground mb-4">+ USPTO fees</div>
+                {user ? (
+                  <Button asChild className="w-full">
+                    <Link to="/filing/wizard">File Trademark</Link>
+                  </Button>
+                ) : (
+                  <Button asChild className="w-full">
+                    <Link to="/auth">Get Started</Link>
+                  </Button>
+                )}
               </CardContent>
             </Card>
-
-            <Card className="shadow-card border-primary hover:shadow-xl transition-all duration-300 hover:scale-105 group">
-              <CardContent className="p-8">
-                <div className="text-center">
-                  <div className="bg-primary text-primary-foreground px-3 py-1 rounded-full text-sm font-medium mb-4 inline-block">
-                    Most Popular
-                  </div>
-                  <h3 className="text-2xl font-bold mb-2">Pro</h3>
-                  <div className="text-4xl font-bold text-primary mb-4">$149</div>
-                  <p className="text-muted-foreground mb-6">+ Government fees</p>
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 mb-4">
-                    <ul className="space-y-3 text-left">
-                      <li className="flex items-center">
-                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
-                        <span className="text-sm">Everything in Basic</span>
-                      </li>
-                      <li className="flex items-center">
-                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
-                        <span className="text-sm">Attorney review</span>
-                      </li>
-                      <li className="flex items-center">
-                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
-                        <span className="text-sm">Priority filing</span>
-                      </li>
-                      <li className="flex items-center">
-                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
-                        <span className="text-sm">IP monitoring</span>
-                      </li>
-                    </ul>
-                  </div>
-                  <Button className="w-full">Choose Pro</Button>
+            
+            <Card className="legal-card hover:shadow-xl transition-shadow">
+              <CardContent className="legal-card-content text-center">
+                <div className="bg-purple-100 rounded-full p-4 w-fit mx-auto mb-4">
+                  <Users className="h-8 w-8 text-purple-600" />
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-card hover:shadow-xl transition-all duration-300 hover:scale-105 group">
-              <CardContent className="p-8">
-                <div className="text-center">
-                  <h3 className="text-2xl font-bold mb-2">Partner</h3>
-                  <div className="text-4xl font-bold text-primary mb-4">$199</div>
-                  <p className="text-muted-foreground mb-6">+ Government fees</p>
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 mb-4">
-                    <ul className="space-y-3 text-left">
-                      <li className="flex items-center">
-                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
-                        <span className="text-sm">Everything in Pro</span>
-                      </li>
-                      <li className="flex items-center">
-                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
-                        <span className="text-sm">Multiple IP types</span>
-                      </li>
-                      <li className="flex items-center">
-                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
-                        <span className="text-sm">Global filing</span>
-                      </li>
-                      <li className="flex items-center">
-                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
-                        <span className="text-sm">Dedicated support</span>
-                      </li>
-                    </ul>
-                  </div>
-                  <Button className="w-full">Choose Partner</Button>
-                </div>
+                <h3 className="text-xl font-semibold mb-4">Copyrights</h3>
+                <ul className="text-left space-y-2 mb-6">
+                  <li className="flex items-center"><CheckCircle className="h-4 w-4 text-green-500 mr-2" />Literary Works</li>
+                  <li className="flex items-center"><CheckCircle className="h-4 w-4 text-green-500 mr-2" />Software Code</li>
+                  <li className="flex items-center"><CheckCircle className="h-4 w-4 text-green-500 mr-2" />Artistic Works</li>
+                  <li className="flex items-center"><CheckCircle className="h-4 w-4 text-green-500 mr-2" />Music & Audio</li>
+                </ul>
+                <div className="text-2xl font-bold text-primary mb-2">$49</div>
+                <div className="text-sm text-muted-foreground mb-4">+ USCO fees</div>
+                {user ? (
+                  <Button asChild className="w-full">
+                    <Link to="/filing/wizard">Register Copyright</Link>
+                  </Button>
+                ) : (
+                  <Button asChild className="w-full">
+                    <Link to="/auth">Get Started</Link>
+                  </Button>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -290,89 +291,32 @@ const Index = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="legal-section gradient-hero text-primary-foreground">
+      <section className="legal-section bg-primary text-primary-foreground">
         <div className="legal-container text-center">
-          <h2 className="text-3xl lg:text-5xl font-bold mb-6">
-            Ready to Protect Your Ideas?
-          </h2>
+          <h2 className="text-3xl font-bold mb-4">Ready to Protect Your Ideas?</h2>
           <p className="text-xl mb-8 text-primary-light max-w-2xl mx-auto">
-            Join thousands of creators, inventors, and entrepreneurs who trust IPSentinel with their intellectual property.
+            Join thousands of inventors and creators who trust IPSentinel with their intellectual property.
           </p>
-          <Link to="/patent-filing">
-            <Button size="lg" variant="secondary" className="bg-white text-primary hover:bg-primary-light hover:text-white text-lg px-8 py-4 shadow-hero">
-              Try Patent Filing Now
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-          </Link>
+          {user ? (
+            <div className="space-y-4">
+              <Button asChild size="lg" variant="secondary" className="bg-white text-primary hover:bg-primary-light hover:text-white">
+                <Link to="/dashboard">Go to Dashboard</Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <Button asChild size="lg" variant="secondary" className="bg-white text-primary hover:bg-primary-light hover:text-white">
+                <Link to="/auth">Get Started Today</Link>
+              </Button>
+              <div>
+                <p className="text-sm text-primary-light">
+                  ✓ No credit card required  ✓ Free consultation  ✓ 30-day money-back guarantee
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </section>
-
-      {/* Legal Footer */}
-      <footer className="bg-legal-dark text-white py-12">
-        <div className="legal-container">
-          <div className="grid md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <div className="flex items-center space-x-2 mb-4">
-                <Shield className="h-6 w-6" />
-                <span className="text-lg font-bold">IPSentinel</span>
-              </div>
-              <p className="text-sm text-gray-300">
-                AI-powered intellectual property protection for creators worldwide.
-              </p>
-            </div>
-            
-            <div>
-              <h4 className="font-semibold mb-3">Services</h4>
-              <ul className="space-y-2 text-sm text-gray-300">
-                <li>Patent Filing</li>
-                <li>Trademark Registration</li>
-                <li>Copyright Protection</li>
-                <li>IP Monitoring</li>
-              </ul>
-            </div>
-            
-            <div>
-              <h4 className="font-semibold mb-3">Regions</h4>
-              <ul className="space-y-2 text-sm text-gray-300">
-                <li>United States</li>
-                <li>Canada</li>
-                <li>European Union</li>
-                <li>WIPO Global</li>
-              </ul>
-            </div>
-            
-            <div>
-              <h4 className="font-semibold mb-3">Support</h4>
-              <ul className="space-y-2 text-sm text-gray-300">
-                <li>Help Center</li>
-                <li>Contact Us</li>
-                <li>Legal Resources</li>
-                <li>API Documentation</li>
-              </ul>
-            </div>
-          </div>
-          
-          <div className="border-t border-gray-600 pt-8">
-            <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-              <div className="text-sm text-gray-300">
-                © 2024 IPSentinel. All rights reserved.
-              </div>
-              <div className="flex space-x-6 text-sm text-gray-300">
-                <a href="#" className="hover:text-white">Privacy Policy</a>
-                <a href="#" className="hover:text-white">Terms of Service</a>
-                <a href="#" className="hover:text-white">Legal Disclaimer</a>
-              </div>
-            </div>
-            <div className="mt-4 text-xs text-gray-400">
-              <p>
-                <strong>Legal Disclaimer:</strong> IPSentinel is an AI-assisted tool and is not a law firm. 
-                It does not offer legal advice. Use of this platform does not constitute an attorney-client relationship. 
-                All filings are performed with user input and guidance. For legal concerns, users may request a licensed attorney review.
-              </p>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };
