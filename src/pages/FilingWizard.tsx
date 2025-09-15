@@ -172,8 +172,23 @@ const FilingWizard = () => {
     setWizardMode('payment');
   };
 
-  const handleTrademarkInterviewComplete = (data: TrademarkData) => {
-    setTrademarkData(data);
+  const handleTrademarkInterviewComplete = (data: Record<string, string>) => {
+    // Convert the interview data to TrademarkData format
+    const trademarkData: TrademarkData = {
+      email: data.email || '',
+      markName: data.mark_name || '',
+      markType: data.mark_type || '',
+      businessDescription: data.goods_services || '',
+      goodsServices: data.goods_services || '',
+      useInCommerce: data.filing_basis?.includes('Use in Commerce') ? 'yes' : 'no',
+      firstUseDate: data.first_use_date || '',
+      intendedUse: data.filing_basis?.includes('Intent to Use') ? 'yes' : 'no',
+      similarMarks: data.similar_marks || '',
+      marketingChannels: data.specimen_description || '',
+      targetAudience: data.goods_services || ''
+    };
+    
+    setTrademarkData(trademarkData);
     setWizardMode('payment');
   };
 

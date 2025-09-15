@@ -119,7 +119,7 @@ interface TrademarkInterviewWizardProps {
   onBack?: () => void;
 }
 
-export const TrademarkInterviewWizard = ({ filing_id, onComplete, onBack }: TrademarkInterviewWizardProps) => {
+const TrademarkInterviewWizard = ({ filing_id, onComplete, onBack }: TrademarkInterviewWizardProps) => {
   const { toast } = useToast();
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [responses, setResponses] = useState<Record<string, string>>({});
