@@ -268,41 +268,6 @@ export type Database = {
           },
         ]
       }
-      filing_documents: {
-        Row: {
-          created_at: string
-          document_type: string
-          file_path: string
-          filing_id: string
-          id: string
-          metadata: Json | null
-        }
-        Insert: {
-          created_at?: string
-          document_type: string
-          file_path: string
-          filing_id: string
-          id?: string
-          metadata?: Json | null
-        }
-        Update: {
-          created_at?: string
-          document_type?: string
-          file_path?: string
-          filing_id?: string
-          id?: string
-          metadata?: Json | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "filing_documents_filing_id_fkey"
-            columns: ["filing_id"]
-            isOneToOne: false
-            referencedRelation: "filings"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       filing_queue: {
         Row: {
           completed_at: string | null
@@ -772,6 +737,44 @@ export type Database = {
       }
     }
     Views: {
+      filing_documents: {
+        Row: {
+          created_at: string | null
+          document_type: Database["public"]["Enums"]["doc_kind"] | null
+          file_path: string | null
+          filing_id: string | null
+          id: string | null
+          metadata: Json | null
+          sha256: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          document_type?: Database["public"]["Enums"]["doc_kind"] | null
+          file_path?: string | null
+          filing_id?: string | null
+          id?: string | null
+          metadata?: never
+          sha256?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          document_type?: Database["public"]["Enums"]["doc_kind"] | null
+          file_path?: string | null
+          filing_id?: string | null
+          id?: string | null
+          metadata?: never
+          sha256?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_filing_id_fkey"
+            columns: ["filing_id"]
+            isOneToOne: false
+            referencedRelation: "filings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       upcoming_deadlines: {
         Row: {
           country_code: string | null
