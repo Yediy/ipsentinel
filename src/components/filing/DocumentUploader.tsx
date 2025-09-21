@@ -116,16 +116,11 @@ export const DocumentUploader = ({
 
       // Save file metadata to database
       const { error: dbError } = await supabase
-        .from('filing_documents')
+        .from('documents')
         .insert({
           filing_id: filingId,
-          file_path: fileName,
-          document_type: getDocumentType(file.type),
-          metadata: {
-            original_name: file.name,
-            size: file.size,
-            mime_type: file.type
-          }
+          url: fileName,
+          kind: getDocumentType(file.type)
         });
 
       if (dbError) throw dbError;
@@ -158,11 +153,10 @@ export const DocumentUploader = ({
     setUploadedFiles(prev => prev.filter(file => file.id !== fileId));
   };
 
-  const getDocumentType = (mimeType: string): string => {
-    if (mimeType.includes('pdf')) return 'application';
-    if (mimeType.includes('image')) return 'drawing';
-    if (mimeType.includes('word') || mimeType.includes('document')) return 'specification';
-    return 'other';
+  const getDocumentType = (mimeType: string): 'pdf' | 'docx' | 'xml' => {
+    if (mimeType.includes('pdf')) return 'pdf';
+    if (mimeType.includes('word') || mimeType.includes('officedocument')) return 'docx';
+    return 'xml'; // default fallback for other document types
   };
 
   const getFileIcon = (type: string) => {

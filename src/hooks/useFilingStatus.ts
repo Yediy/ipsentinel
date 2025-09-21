@@ -166,9 +166,9 @@ export const useFilingDetails = (filingId: string | null) => {
 
       if (filingError) throw filingError;
 
-      // Fetch related documents
-      const { data: documentsData, error: documentsError } = await supabase
-        .from('filing_documents')
+      // Fetch documents using the documents table
+      const { data: documents, error: documentsError } = await supabase
+        .from('documents')
         .select('*')
         .eq('filing_id', filingId);
 
@@ -184,7 +184,7 @@ export const useFilingDetails = (filingId: string | null) => {
       if (deadlinesError) throw deadlinesError;
 
       setFiling(filingData);
-      setDocuments(documentsData || []);
+      setDocuments(documents || []);
       setDeadlines(deadlinesData || []);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch filing details';
