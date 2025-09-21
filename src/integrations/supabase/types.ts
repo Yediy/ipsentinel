@@ -735,6 +735,53 @@ export type Database = {
           },
         ]
       }
+      upcoming_deadlines: {
+        Row: {
+          country_code: string | null
+          done: boolean
+          due_on: string
+          filing_id: string
+          filing_type: string | null
+          id: string
+          label: string
+          refreshed_at: string
+          route: string | null
+          user_id: string
+        }
+        Insert: {
+          country_code?: string | null
+          done?: boolean
+          due_on: string
+          filing_id: string
+          filing_type?: string | null
+          id?: string
+          label: string
+          refreshed_at?: string
+          route?: string | null
+          user_id: string
+        }
+        Update: {
+          country_code?: string | null
+          done?: boolean
+          due_on?: string
+          filing_id?: string
+          filing_type?: string | null
+          id?: string
+          label?: string
+          refreshed_at?: string
+          route?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "upcoming_deadlines_filing_id_fkey"
+            columns: ["filing_id"]
+            isOneToOne: false
+            referencedRelation: "filings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       filing_documents: {
@@ -768,29 +815,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "documents_filing_id_fkey"
-            columns: ["filing_id"]
-            isOneToOne: false
-            referencedRelation: "filings"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      upcoming_deadlines: {
-        Row: {
-          country_code: string | null
-          created_at: string | null
-          done: boolean | null
-          due_on: string | null
-          filing_id: string | null
-          id: string | null
-          label: string | null
-          route: Database["public"]["Enums"]["filing_route"] | null
-          type: string | null
-          user_id: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "deadlines_filing_id_fkey"
             columns: ["filing_id"]
             isOneToOne: false
             referencedRelation: "filings"
