@@ -814,6 +814,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      compute_deadlines_for_filing: {
+        Args: { fid: string }
+        Returns: undefined
+      }
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean

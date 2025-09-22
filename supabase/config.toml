@@ -6,8 +6,17 @@ verify_jwt = false
 [functions.stripe-webhook]
 verify_jwt = false
 
+[functions.enhanced-stripe-webhook]
+verify_jwt = false
+
 [functions.document-webhook]
 verify_jwt = false
 
 [functions.verify-payment]
+verify_jwt = false
+
+[functions.send-notification-email]
+verify_jwt = false
+
+[functions.rate-limited-wrapper]
 verify_jwt = false

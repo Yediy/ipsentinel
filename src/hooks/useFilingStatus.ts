@@ -14,6 +14,12 @@ interface Filing {
   route?: string;
   priority_date?: string;
   user_id: string;
+  documents?: {
+    id: string;
+    kind: string;
+    url: string;
+    created_at: string;
+  }[];
 }
 
 interface UseFilingStatusReturn {

@@ -15,7 +15,7 @@ interface Filing {
   payment_status: string;
   created_at: string;
   country: string;
-  filing_documents?: {
+  documents?: {
     id: string;
     kind: string;
     url: string;
@@ -38,7 +38,7 @@ const FilingsDashboard = () => {
         .from('filings')
         .select(`
           *,
-          filing_documents (
+          documents (
             id,
             kind,
             url,
@@ -191,10 +191,10 @@ const FilingsDashboard = () => {
                     Filed: {new Date(filing.created_at).toLocaleDateString()}
                   </p>
 
-                  {filing.filing_documents && filing.filing_documents.length > 0 && (
+                  {filing.documents && filing.documents.length > 0 && (
                     <div className="space-y-2">
                       <p className="text-sm font-medium">Documents:</p>
-                      {filing.filing_documents.map((doc) => (
+                      {filing.documents.map((doc) => (
                         <Button
                           key={doc.id}
                           variant="outline"
@@ -218,7 +218,7 @@ const FilingsDashboard = () => {
                     </div>
                   )}
 
-                  {filing.status === 'ready' && (!filing.filing_documents || filing.filing_documents.length === 0) && (
+                  {filing.status === 'ready' && (!filing.documents || filing.documents.length === 0) && (
                     <p className="text-sm text-gray-500 italic">
                       Documents are being prepared...
                     </p>
