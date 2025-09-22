@@ -25,18 +25,18 @@ Deno.serve(async (req) => {
       body
     });
 
-    // TODO: Uncomment when LOVABLE_DOC_WEBHOOK_SECRET is configured
-    // const expectedSecret = Deno.env.get('LOVABLE_DOC_WEBHOOK_SECRET');
-    // if (!expectedSecret || webhookSecret !== expectedSecret) {
-    //   console.error('Invalid webhook secret');
-    //   return new Response(
-    //     JSON.stringify({ error: 'Invalid secret' }), 
-    //     { 
-    //       status: 401, 
-    //       headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-    //     }
-    //   );
-    // }
+    // Validate webhook secret for security
+    const expectedSecret = Deno.env.get('LOVABLE_DOC_WEBHOOK_SECRET');
+    if (!expectedSecret || webhookSecret !== expectedSecret) {
+      console.error('Invalid webhook secret provided');
+      return new Response(
+        JSON.stringify({ error: 'Invalid webhook secret' }), 
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
 
     const { filing_id, kind = 'pdf', url, sha256 } = body;
 

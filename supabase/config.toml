@@ -6,7 +6,7 @@ verify_jwt = false
 [functions.stripe-webhook]
 verify_jwt = false
 
-[functions.generate-filing]
+[functions.document-webhook]
 verify_jwt = false
 
 [functions.verify-payment]

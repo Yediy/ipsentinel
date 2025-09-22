@@ -17,8 +17,8 @@ interface Filing {
   country: string;
   filing_documents?: {
     id: string;
-    document_type: string;
-    file_path: string;
+    kind: string;
+    url: string;
     created_at: string;
   }[];
 }
@@ -40,8 +40,8 @@ const FilingsDashboard = () => {
           *,
           filing_documents (
             id,
-            document_type,
-            file_path,
+            kind,
+            url,
             created_at
           )
         `)
@@ -200,12 +200,18 @@ const FilingsDashboard = () => {
                           variant="outline"
                           size="sm"
                           className="w-full justify-between"
-                          onClick={() => downloadDocument(
-                            doc.file_path, 
-                            `${filing.title}_${doc.document_type}.${doc.document_type === 'pdf' ? 'pdf' : 'txt'}`
-                          )}
+                          onClick={() => {
+                            if (doc.url.startsWith('http')) {
+                              window.open(doc.url, '_blank');
+                            } else {
+                              downloadDocument(
+                                doc.url, 
+                                `${filing.title}_${doc.kind}.${doc.kind === 'pdf' ? 'pdf' : 'txt'}`
+                              );
+                            }
+                          }}
                         >
-                          <span>{doc.document_type.toUpperCase()}</span>
+                          <span>{doc.kind.toUpperCase()}</span>
                           <Download className="w-4 h-4" />
                         </Button>
                       ))}
