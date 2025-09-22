@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { Loader2 } from 'lucide-react';
+import { sanitizeError } from '@/lib/security';
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -15,12 +16,22 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    let mounted = true;
+    
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        if (!mounted) return;
+        
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Security: Clear any sensitive data from localStorage on signout
+        if (event === 'SIGNED_OUT') {
+          localStorage.removeItem('supabase.auth.token');
+          sessionStorage.clear();
+        }
 
         // If no session, redirect to auth
         if (!session) {
@@ -30,7 +41,16 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (!mounted) return;
+      
+      if (error) {
+        console.error('Auth session error:', sanitizeError(error, 'auth-guard'));
+        setLoading(false);
+        navigate('/auth');
+        return;
+      }
+      
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -38,9 +58,17 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
       if (!session) {
         navigate('/auth');
       }
+    }).catch((error) => {
+      if (!mounted) return;
+      console.error('Auth session check failed:', sanitizeError(error, 'auth-guard'));
+      setLoading(false);
+      navigate('/auth');
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [navigate]);
 
   if (loading) {
