@@ -787,30 +787,27 @@ export type Database = {
       filing_documents: {
         Row: {
           created_at: string | null
-          document_type: Database["public"]["Enums"]["doc_kind"] | null
-          file_path: string | null
           filing_id: string | null
           id: string | null
-          metadata: Json | null
+          kind: Database["public"]["Enums"]["doc_kind"] | null
           sha256: string | null
+          url: string | null
         }
         Insert: {
           created_at?: string | null
-          document_type?: Database["public"]["Enums"]["doc_kind"] | null
-          file_path?: string | null
           filing_id?: string | null
           id?: string | null
-          metadata?: never
+          kind?: Database["public"]["Enums"]["doc_kind"] | null
           sha256?: string | null
+          url?: string | null
         }
         Update: {
           created_at?: string | null
-          document_type?: Database["public"]["Enums"]["doc_kind"] | null
-          file_path?: string | null
           filing_id?: string | null
           id?: string | null
-          metadata?: never
+          kind?: Database["public"]["Enums"]["doc_kind"] | null
           sha256?: string | null
+          url?: string | null
         }
         Relationships: [
           {
@@ -827,6 +824,10 @@ export type Database = {
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      refresh_upcoming_deadlines: {
+        Args: { _filing_id?: string }
+        Returns: undefined
       }
     }
     Enums: {
