@@ -793,22 +793,6 @@ export type Database = {
           sha256: string | null
           url: string | null
         }
-        Insert: {
-          created_at?: string | null
-          filing_id?: string | null
-          id?: string | null
-          kind?: Database["public"]["Enums"]["doc_kind"] | null
-          sha256?: string | null
-          url?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          filing_id?: string | null
-          id?: string | null
-          kind?: Database["public"]["Enums"]["doc_kind"] | null
-          sha256?: string | null
-          url?: string | null
-        }
         Relationships: [
           {
             foreignKeyName: "documents_filing_id_fkey"
