@@ -824,17 +824,6 @@ export type Database = {
       }
     }
     Functions: {
-      get_user_documents: {
-        Args: { p_filing_id?: string }
-        Returns: {
-          created_at: string
-          document_type: string
-          file_path: string
-          filing_id: string
-          id: string
-          sha256: string
-        }[]
-      }
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean

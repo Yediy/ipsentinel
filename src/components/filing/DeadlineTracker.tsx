@@ -22,7 +22,11 @@ interface Deadline {
   label: string;
   due_on: string;
   done: boolean;
-  created_at: string;
+  user_id?: string;
+  country_code?: string;
+  route?: string;
+  filing_type?: string;
+  refreshed_at?: string;
   filing?: {
     title: string;
     type: string;
