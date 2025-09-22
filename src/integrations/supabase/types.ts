@@ -268,6 +268,33 @@ export type Database = {
           },
         ]
       }
+      filing_documents: {
+        Row: {
+          created_at: string
+          filing_id: string
+          id: string
+          kind: Database["public"]["Enums"]["doc_kind"]
+          sha256: string | null
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          filing_id: string
+          id: string
+          kind: Database["public"]["Enums"]["doc_kind"]
+          sha256?: string | null
+          url: string
+        }
+        Update: {
+          created_at?: string
+          filing_id?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["doc_kind"]
+          sha256?: string | null
+          url?: string
+        }
+        Relationships: []
+      }
       filing_queue: {
         Row: {
           completed_at: string | null
@@ -784,25 +811,7 @@ export type Database = {
       }
     }
     Views: {
-      filing_documents: {
-        Row: {
-          created_at: string | null
-          filing_id: string | null
-          id: string | null
-          kind: Database["public"]["Enums"]["doc_kind"] | null
-          sha256: string | null
-          url: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "documents_filing_id_fkey"
-            columns: ["filing_id"]
-            isOneToOne: false
-            referencedRelation: "filings"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
       is_admin: {
