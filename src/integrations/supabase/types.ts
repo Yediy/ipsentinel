@@ -809,9 +809,53 @@ export type Database = {
           },
         ]
       }
+      user_agreements: {
+        Row: {
+          created_at: string
+          disclaimer_accepted_at: string | null
+          id: string
+          privacy_accepted_at: string | null
+          tos_accepted_at: string | null
+          user_id: string
+          version: string
+        }
+        Insert: {
+          created_at?: string
+          disclaimer_accepted_at?: string | null
+          id?: string
+          privacy_accepted_at?: string | null
+          tos_accepted_at?: string | null
+          user_id: string
+          version?: string
+        }
+        Update: {
+          created_at?: string
+          disclaimer_accepted_at?: string | null
+          id?: string
+          privacy_accepted_at?: string | null
+          tos_accepted_at?: string | null
+          user_id?: string
+          version?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      user_agreements_v1: {
+        Row: {
+          accepted: boolean | null
+          user_id: string | null
+        }
+        Insert: {
+          accepted?: never
+          user_id?: string | null
+        }
+        Update: {
+          accepted?: never
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       compute_deadlines_for_filing: {
