@@ -1,0 +1,192 @@
+{
+  "government_fees": {
+    "patent": {
+      "US": {
+        "micro": 400,
+        "small": 800,
+        "large": 1600,
+        "search_fee": 600,
+        "examination_fee": 800,
+        "excess_claims": 100
+      },
+      "CN": {
+        "invention": 950,
+        "utility_model": 500,
+        "design": 500,
+        "search_fee": 2500,
+        "examination_fee": 2500
+      },
+      "EP": {
+        "filing_fee": 1250,
+        "search_fee": 1635,
+        "examination_fee": 1425,
+        "designation_fee": 600,
+        "excess_claims": 250
+      },
+      "JP": {
+        "filing_fee": 14000,
+        "search_fee": 184000,
+        "examination_fee": 138000,
+        "excess_claims": 1600
+      },
+      "KR": {
+        "filing_fee": 42000,
+        "search_fee": 70000,
+        "examination_fee": 135000,
+        "excess_claims": 15000
+      },
+      "GB": {
+        "filing_fee": 280,
+        "search_fee": 150,
+        "examination_fee": 130,
+        "excess_claims": 50
+      },
+      "CA": {
+        "filing_fee": 400,
+        "search_fee": 500,
+        "examination_fee": 800,
+        "excess_claims": 100
+      },
+      "AU": {
+        "filing_fee": 370,
+        "search_fee": 1040,
+        "examination_fee": 490,
+        "excess_claims": 100
+      }
+    },
+    "trademark": {
+      "US": {
+        "per_class": 350,
+        "teas_plus": 250,
+        "teas_standard": 350
+      },
+      "CN": {
+        "per_class": 270,
+        "electronic": 210
+      },
+      "EP": {
+        "base_fee": 900,
+        "per_class": 150,
+        "second_class": 50
+      },
+      "JP": {
+        "base_fee": 12000,
+        "per_class": 8600
+      },
+      "KR": {
+        "per_class": 62000,
+        "multi_class_discount": 0.2
+      },
+      "GB": {
+        "base_fee": 170,
+        "per_class": 50
+      },
+      "CA": {
+        "base_fee": 250,
+        "per_class": 100
+      },
+      "AU": {
+        "per_class": 200,
+        "additional_class": 150
+      }
+    },
+    "copyright": {
+      "US": {
+        "basic": 65,
+        "paper": 125,
+        "expedited": 800
+      },
+      "CN": {
+        "basic": 100,
+        "expedited": 300
+      },
+      "EP": {
+        "varies_by_country": 40
+      },
+      "JP": {
+        "basic": 60,
+        "expedited": 200
+      },
+      "KR": {
+        "basic": 50,
+        "expedited": 150
+      },
+      "GB": {
+        "voluntary": 35,
+        "deposit": 20
+      },
+      "CA": {
+        "basic": 50,
+        "expedited": 200
+      },
+      "AU": {
+        "basic": 55,
+        "expedited": 165
+      }
+    }
+  },
+  "service_fees": {
+    "ipgenie": {
+      "free": 0,
+      "basic": 49,
+      "pro": 149,
+      "partner": 199,
+      "enterprise": 499
+    },
+    "attorney_review": 299,
+    "expedited_processing": 199,
+    "translation_per_page": 25,
+    "drawings_per_sheet": 50,
+    "priority_examination": 150
+  },
+  "exchange_rates": {
+    "JPY_to_USD": 0.0067,
+    "KRW_to_USD": 0.00076,
+    "CNY_to_USD": 0.14,
+    "EUR_to_USD": 1.08,
+    "GBP_to_USD": 1.27,
+    "CAD_to_USD": 0.74,
+    "AUD_to_USD": 0.66
+  },
+  "deadlines": {
+    "paris_convention_months": 12,
+    "pct_national_phase": {
+      "US": 30,
+      "CN": 30,
+      "EP": 31,
+      "JP": 30,
+      "KR": 31,
+      "GB": 31,
+      "CA": 30,
+      "AU": 31
+    },
+    "madrid_protocol_months": 18,
+    "common_deadlines": {
+      "patent_prosecution_response": 6,
+      "trademark_office_action": 6,
+      "copyright_response": 3
+    }
+  },
+  "entity_size_qualifications": {
+    "US": {
+      "micro_entity": {
+        "max_previous_applications": 4,
+        "max_gross_income": 200000,
+        "max_employee_count": 500,
+        "education_discount": true
+      },
+      "small_entity": {
+        "max_employee_count": 500,
+        "non_profit_eligible": true
+      }
+    }
+  },
+  "nice_classification": {
+    "goods_classes": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34],
+    "services_classes": [35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45],
+    "class_descriptions": {
+      "9": "Scientific, research, navigation, surveying, photographic, cinematographic, audiovisual, optical, weighing, measuring, signalling, detecting, testing, inspecting, life-saving and teaching apparatus and instruments; apparatus and instruments for conducting, switching, transforming, accumulating, regulating or controlling the distribution or use of electricity; apparatus and instruments for recording, transmitting, reproducing or processing sound, images or data; recorded and downloadable media, computer software, blank digital or analogue recording and storage media; mechanisms for coin-operated apparatus; cash registers, calculating devices; computers and computer peripheral devices; diving suits, divers' masks, ear plugs for divers, nose clips for divers and swimmers, gloves for divers, breathing apparatus for underwater swimming; fire-extinguishing apparatus.",
+      "42": "Scientific and technological services and research and design relating thereto; industrial analysis, industrial research and industrial design services; quality control and authentication services; design and development of computer hardware and software."
+    }
+  }
+}

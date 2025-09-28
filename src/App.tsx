@@ -20,6 +20,11 @@ import NotFound from "./pages/NotFound";
 import { PatentFilingDashboard } from "./components/patent/PatentFilingDashboard";
 import InternationalFiling from "./pages/InternationalFiling";
 import DrawingsDemo from "./pages/DrawingsDemo";
+import IPGenieWizard from "./pages/IPGenieWizard";
+import IPGenieCostCalculator from "./pages/IPGenieCostCalculator";
+import AdminDashboard from "./pages/AdminDashboard";
+import PriorArtSearch from "./pages/PriorArtSearch";
+import TrademarkStatus from "./pages/TrademarkStatus";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +42,11 @@ const App = () => (
             <Route path="/patent-filing" element={<PatentFilingDashboard />} />
             <Route path="/international-filing" element={<InternationalFiling />} />
             <Route path="/drawings-demo" element={<DrawingsDemo />} />
+            <Route path="/wizard" element={<IPGenieWizard />} />
+            <Route path="/calculator" element={<IPGenieCostCalculator />} />
+            <Route path="/prior-art" element={<PriorArtSearch />} />
+            <Route path="/tm-status" element={<TrademarkStatus />} />
+            <Route path="/admin" element={<AdminDashboard />} />
             
             {/* Protected Routes with Sidebar */}
             <Route path="/dashboard" element={

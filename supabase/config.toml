@@ -20,3 +20,15 @@ verify_jwt = false
 
 [functions.rate-limited-wrapper]
 verify_jwt = false
+
+[functions.email-sender]
+verify_jwt = false
+
+[functions.tm-tsdr]
+verify_jwt = false
+
+[functions.patent-ops-search]
+verify_jwt = false
+
+[functions.deadline-reminder]
+verify_jwt = false
