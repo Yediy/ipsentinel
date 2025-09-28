@@ -71,10 +71,10 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('AI Filing Agent error:', error);
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: error?.message || 'Unknown error occurred',
       success: false 
     }), {
       status: 500,
@@ -136,6 +136,16 @@ async function processConversationStep(supabase: any, openAIApiKey: string, fili
     timestamp: new Date().toISOString()
   });
 
+  // Initialize AI processing (placeholder implementation)
+  async function processWithAI(apiKey: string, step: string, response: string, log: any[]): Promise<any> {
+    // Placeholder for AI processing logic
+    return {
+      processed_response: response,
+      ai_suggestions: [],
+      confidence: 0.8
+    };
+  }
+
   // Process response with AI if needed
   let aiResponse = null;
   if (data.needs_ai_processing) {
@@ -156,7 +166,7 @@ async function processConversationStep(supabase: any, openAIApiKey: string, fili
 
   // Determine next step
   const conversationFlow = getConversationFlow(session.session_type.replace('_interview', ''));
-  const currentStepIndex = conversationFlow.steps.findIndex(s => s.id === step);
+  const currentStepIndex = conversationFlow.steps.findIndex((s: any) => s.id === step);
   const nextStep = conversationFlow.steps[currentStepIndex + 1];
 
   return {
@@ -212,11 +222,11 @@ async function generatePatentSections(supabase: any, openAIApiKey: string, filin
         id: section.id
       });
       
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error generating ${template.section_type}:`, error);
       sections.push({
         type: template.section_type,
-        content: `Error generating section: ${error.message}`,
+        content: `Error generating section: ${error?.message || 'Unknown error'}`,
         error: true
       });
     }
@@ -477,7 +487,7 @@ function getConversationFlow(filing_type: string) {
     }
   };
   
-  return flows[filing_type] || flows.patent;
+  return (flows as any)[filing_type] || flows.patent;
 }
 
 async function simulateTrademarkSearch(markName: string, classes: any[]) {
@@ -735,8 +745,8 @@ async function generatePatentPDF(supabase: any, filing_id: string) {
 
 function generateUSPTOPatentDocument(filing: any, sections: any[]) {
   // Generate USPTO-compliant document structure
-  const sectionMap = {};
-  sections.forEach(section => {
+  const sectionMap: any = {};
+  sections.forEach((section: any) => {
     sectionMap[section.section_type] = section.content;
   });
   

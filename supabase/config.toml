@@ -32,3 +32,9 @@ verify_jwt = false
 
 [functions.deadline-reminder]
 verify_jwt = false
+
+[functions.drawing-upload]
+verify_jwt = false
+
+[functions.drawing-generator]
+verify_jwt = false

@@ -73,13 +73,13 @@ serve(async (req) => {
         filing_id: requestBody.filing_id || null,
         api_type: 'tess',
         request_data: requestBody,
-        response_data: { error: error.message },
+        response_data: { error: (error as any)?.message || 'TESS API error' },
         status: 'error',
-        error_message: error.message
+        error_message: (error as any)?.message || 'TESS API error'
       });
 
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: (error as any)?.message || 'TESS search failed',
       success: false 
     }), {
       status: 500,

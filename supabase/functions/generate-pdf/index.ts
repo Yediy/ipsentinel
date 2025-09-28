@@ -81,9 +81,9 @@ serve(async (req) => {
       status: 200,
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("PDF generation error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: error?.message || 'PDF generation failed' }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });

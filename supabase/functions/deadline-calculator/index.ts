@@ -110,7 +110,7 @@ serve(async (req) => {
 });
 
 function calculateDeadlines(filing: any) {
-  const deadlines = [];
+  const deadlines: any[] = [];
   const today = new Date();
   
   if (!filing.priority_date) {

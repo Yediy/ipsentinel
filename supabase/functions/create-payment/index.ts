@@ -27,11 +27,11 @@ serve(async (req) => {
       bundle: { amount: 19900, name: "Bundle Plan - Complete Protection Package" }, // $199
     };
 
-    if (!planPricing[plan]) {
+    if (!(planPricing as any)[plan]) {
       throw new Error("Invalid plan selected");
     }
 
-    const selectedPlan = planPricing[plan];
+    const selectedPlan = (planPricing as any)[plan];
     console.log("Selected plan:", selectedPlan);
 
     // Create Supabase client with service role for database operations
@@ -113,10 +113,10 @@ serve(async (req) => {
         status: 200,
       }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error creating payment:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error?.message || 'Payment creation failed' }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500,

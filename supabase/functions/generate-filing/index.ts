@@ -55,7 +55,7 @@ serve(async (req) => {
         .from("filing_queue")
         .update({ 
           status: 'failed',
-          error_message: aiError.message,
+          error_message: (aiError as any)?.message || 'AI generation failed',
           completed_at: new Date().toISOString()
         })
         .eq("filing_id", filing_id);
@@ -137,9 +137,9 @@ serve(async (req) => {
       status: 200,
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Generate filing error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: error?.message || 'Filing generation failed' }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
