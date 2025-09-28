@@ -53,7 +53,8 @@ const Index = () => {
         </Link>
         <Link to="/filing/wizard">
           <Button size="lg" variant="outline" className="text-white border-white hover:bg-white hover:text-primary text-lg px-8 py-4">
-            Start New Filing
+            <Zap className="mr-2 h-5 w-5" />
+            Create New Filing
             <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
         </Link>
@@ -229,15 +230,20 @@ const Index = () => {
                 </ul>
                 <div className="text-2xl font-bold text-primary mb-2">$199</div>
                 <div className="text-sm text-muted-foreground mb-4">+ USPTO fees</div>
-                {user ? (
-                  <Button asChild className="w-full">
-                    <Link to="/filing/wizard">Start Patent Filing</Link>
-                  </Button>
-                ) : (
-                  <Button asChild className="w-full">
-                    <Link to="/auth">Get Started</Link>
-                  </Button>
-                )}
+                 {user ? (
+                   <div className="flex gap-2">
+                     <Button asChild className="w-full">
+                       <Link to="/filing/wizard">Start Patent Filing</Link>
+                     </Button>
+                     <Button asChild variant="outline" size="sm">
+                       <Link to="/cost-calculator">Cost Calculator</Link>
+                     </Button>
+                   </div>
+                 ) : (
+                   <Button asChild className="w-full">
+                     <Link to="/auth">Get Started</Link>
+                   </Button>
+                 )}
               </CardContent>
             </Card>
             
@@ -256,9 +262,14 @@ const Index = () => {
                 <div className="text-2xl font-bold text-primary mb-2">$99</div>
                 <div className="text-sm text-muted-foreground mb-4">+ USPTO fees</div>
                 {user ? (
-                  <Button asChild className="w-full">
-                    <Link to="/filing/wizard">File Trademark</Link>
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button asChild className="w-full">
+                      <Link to="/filing/wizard">File Trademark</Link>
+                    </Button>
+                    <Button asChild variant="outline" size="sm">
+                      <Link to="/trademark-status">Check Status</Link>
+                    </Button>
+                  </div>
                 ) : (
                   <Button asChild className="w-full">
                     <Link to="/auth">Get Started</Link>

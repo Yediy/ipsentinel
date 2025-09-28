@@ -80,7 +80,8 @@ const IPGenieWizard = () => {
       const filingData = {
         user_id: user.user?.id,
         type: formData.type,
-        route: formData.route,
+        route: formData.route as 'national' | 'pct' | 'paris' | 'madrid',
+        country: formData.country_code, // Map country_code to country for compatibility
         country_code: formData.country_code,
         priority_date: formData.priority_date || null,
         title: formData.title || formData.tm_mark_text || formData.work_title,
@@ -91,9 +92,9 @@ const IPGenieWizard = () => {
         prior_art: formData.prior_art,
         problem: formData.problem,
         solution: formData.solution,
-        cn_type: formData.cn_type,
+        cn_type: formData.cn_type as 'invention' | 'utility_model' | 'design',
         tm_mark_text: formData.tm_mark_text,
-        tm_mark_type: formData.tm_mark_type,
+        tm_mark_type: formData.tm_mark_type as 'word' | 'device' | 'combined',
         tm_classes: formData.tm_classes.length > 0 ? formData.tm_classes : null,
         status: 'draft'
       };
