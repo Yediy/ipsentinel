@@ -377,11 +377,13 @@ export type Database = {
       filings: {
         Row: {
           abstract: string | null
+          abstract_zh: string | null
           agent_assigned: boolean | null
           agent_contact: string | null
           agent_required: boolean | null
           background: string | null
           claims: string | null
+          claims_zh: string | null
           cn_type: Database["public"]["Enums"]["cn_type"] | null
           components: Json | null
           contact_email: string | null
@@ -389,6 +391,7 @@ export type Database = {
           country_code: string
           created_at: string
           detailed_description: string | null
+          detailed_description_zh: string | null
           features: string | null
           generated_content: Json | null
           id: string
@@ -406,6 +409,7 @@ export type Database = {
           status: string
           summary: string | null
           title: string
+          title_zh: string | null
           tm_classes: Json | null
           tm_cn_subclasses: Json | null
           tm_mark_image_url: string | null
@@ -419,11 +423,13 @@ export type Database = {
         }
         Insert: {
           abstract?: string | null
+          abstract_zh?: string | null
           agent_assigned?: boolean | null
           agent_contact?: string | null
           agent_required?: boolean | null
           background?: string | null
           claims?: string | null
+          claims_zh?: string | null
           cn_type?: Database["public"]["Enums"]["cn_type"] | null
           components?: Json | null
           contact_email?: string | null
@@ -431,6 +437,7 @@ export type Database = {
           country_code?: string
           created_at?: string
           detailed_description?: string | null
+          detailed_description_zh?: string | null
           features?: string | null
           generated_content?: Json | null
           id?: string
@@ -448,6 +455,7 @@ export type Database = {
           status?: string
           summary?: string | null
           title: string
+          title_zh?: string | null
           tm_classes?: Json | null
           tm_cn_subclasses?: Json | null
           tm_mark_image_url?: string | null
@@ -461,11 +469,13 @@ export type Database = {
         }
         Update: {
           abstract?: string | null
+          abstract_zh?: string | null
           agent_assigned?: boolean | null
           agent_contact?: string | null
           agent_required?: boolean | null
           background?: string | null
           claims?: string | null
+          claims_zh?: string | null
           cn_type?: Database["public"]["Enums"]["cn_type"] | null
           components?: Json | null
           contact_email?: string | null
@@ -473,6 +483,7 @@ export type Database = {
           country_code?: string
           created_at?: string
           detailed_description?: string | null
+          detailed_description_zh?: string | null
           features?: string | null
           generated_content?: Json | null
           id?: string
@@ -490,6 +501,7 @@ export type Database = {
           status?: string
           summary?: string | null
           title?: string
+          title_zh?: string | null
           tm_classes?: Json | null
           tm_cn_subclasses?: Json | null
           tm_mark_image_url?: string | null
@@ -859,7 +871,7 @@ export type Database = {
     }
     Functions: {
       compute_deadlines_for_filing: {
-        Args: { fid: string }
+        Args: { filing_id: string }
         Returns: undefined
       }
       is_admin: {
