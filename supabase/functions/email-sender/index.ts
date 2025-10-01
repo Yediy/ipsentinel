@@ -1,10 +1,8 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { createSecureResponse, handleCorsPreFlight } from '../_shared/security-headers.ts';
+import { handleError, createValidationError } from '../_shared/error-handler.ts';
+import { validateEmail } from '../_shared/validation.ts';
 
 interface EmailRequest {
   to: string;
@@ -16,16 +14,34 @@ interface EmailRequest {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return handleCorsPreFlight();
   }
 
   try {
     const { to, from, subject, html, filing_id, notification_type }: EmailRequest = await req.json();
     
+    // Validate required fields
     if (!to || !subject || !html) {
-      throw new Error('Missing required email fields: to, subject, html');
+      throw createValidationError('Missing required email fields: to, subject, html');
+    }
+
+    // Validate email format
+    if (!validateEmail(to)) {
+      throw createValidationError('Invalid recipient email address');
+    }
+
+    if (from && !validateEmail(from)) {
+      throw createValidationError('Invalid sender email address');
+    }
+
+    // Validate content lengths
+    if (subject.length > 500) {
+      throw createValidationError('Subject too long (max 500 characters)');
+    }
+
+    if (html.length > 500000) {
+      throw createValidationError('HTML content too long (max 500KB)');
     }
 
     // Initialize Supabase client
@@ -34,10 +50,10 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Use Postmark for email sending
-    const postmarkToken = Deno.env.get('POSTMARK_TOKEN');
+    const postmarkApiKey = Deno.env.get('POSTMARK_API_KEY');
     const fromEmail = from || Deno.env.get('FROM_EMAIL') || 'noreply@ipgenie.app';
 
-    if (postmarkToken) {
+    if (postmarkApiKey) {
       console.log('Sending email via Postmark to:', to);
       
       const postmarkResponse = await fetch('https://api.postmarkapp.com/email', {
@@ -45,7 +61,7 @@ serve(async (req) => {
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
-          'X-Postmark-Server-Token': postmarkToken,
+          'X-Postmark-Server-Token': postmarkApiKey,
         },
         body: JSON.stringify({
           From: fromEmail,
@@ -65,14 +81,14 @@ serve(async (req) => {
       const postmarkResult = await postmarkResponse.json();
       console.log('Postmark response:', postmarkResult);
     } else {
-      // Fallback: Log email for development
-      console.log('=== EMAIL NOTIFICATION (NO POSTMARK TOKEN) ===');
+      // Fallback: Log email for development (without sensitive content)
+      console.log('=== EMAIL NOTIFICATION (NO POSTMARK_API_KEY) ===');
       console.log('To:', to);
       console.log('From:', fromEmail);
       console.log('Subject:', subject);
       console.log('Type:', notification_type);
       console.log('Filing ID:', filing_id);
-      console.log('HTML Body:', html);
+      console.log('Note: HTML body not logged for security');
       console.log('==============================================');
     }
 
@@ -102,34 +118,14 @@ serve(async (req) => {
       }
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: postmarkToken ? 'Email sent successfully' : 'Email logged (add POSTMARK_TOKEN for actual sending)',
-        email_sent: !!postmarkToken
-      }),
-      {
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        },
-      }
-    );
+    return createSecureResponse({
+      success: true,
+      message: postmarkApiKey ? 'Email sent successfully' : 'Email logged (add POSTMARK_API_KEY for actual sending)',
+      email_sent: !!postmarkApiKey
+    });
 
   } catch (error: any) {
     console.error('Email sender error:', error);
-    return new Response(
-      JSON.stringify({ 
-        error: error.message || 'Email sending failed',
-        success: false 
-      }),
-      {
-        status: 500,
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        },
-      }
-    );
+    return handleError(error);
   }
 });
