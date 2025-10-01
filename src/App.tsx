@@ -7,8 +7,10 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import SpaceBackground from "./components/SpaceBackground";
 import { AppSidebar } from "./components/AppSidebar";
 import { AuthGuard } from "./components/AuthGuard";
+import { LegalConsentGate } from "./components/LegalConsentGate";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import PleaseVerify from "./pages/PleaseVerify";
 import Dashboard from "./pages/Dashboard";
 import EnhancedDashboard from "./pages/EnhancedDashboard";
 import FilingsDashboard from "./pages/FilingsDashboard";
@@ -39,6 +41,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/please-verify" element={<PleaseVerify />} />
             <Route path="/patent-filing" element={<PatentFilingDashboard />} />
             <Route path="/international-filing" element={<InternationalFiling />} />
             <Route path="/drawings-demo" element={<DrawingsDemo />} />
@@ -48,56 +51,64 @@ const App = () => (
             <Route path="/tm-status" element={<TrademarkStatus />} />
             <Route path="/admin" element={<AdminDashboard />} />
             
-            {/* Protected Routes with Sidebar */}
+            {/* Protected Routes with Sidebar - Wrapped in AuthGuard and LegalConsentGate */}
             <Route path="/dashboard" element={
               <AuthGuard>
-                <SidebarProvider>
-                  <div className="flex min-h-screen w-full">
-                    <AppSidebar />
-                    <main className="flex-1 p-6 bg-background">
-                      <EnhancedDashboard />
-                    </main>
-                  </div>
-                </SidebarProvider>
+                <LegalConsentGate>
+                  <SidebarProvider>
+                    <div className="flex min-h-screen w-full">
+                      <AppSidebar />
+                      <main className="flex-1 p-6 bg-background">
+                        <EnhancedDashboard />
+                      </main>
+                    </div>
+                  </SidebarProvider>
+                </LegalConsentGate>
               </AuthGuard>
             } />
             
             <Route path="/filings" element={
               <AuthGuard>
-                <SidebarProvider>
-                  <div className="flex min-h-screen w-full">
-                    <AppSidebar />
-                    <main className="flex-1 p-6 bg-background">
-                      <FilingsDashboard />
-                    </main>
-                  </div>
-                </SidebarProvider>
+                <LegalConsentGate>
+                  <SidebarProvider>
+                    <div className="flex min-h-screen w-full">
+                      <AppSidebar />
+                      <main className="flex-1 p-6 bg-background">
+                        <FilingsDashboard />
+                      </main>
+                    </div>
+                  </SidebarProvider>
+                </LegalConsentGate>
               </AuthGuard>
             } />
             
             <Route path="/filing/wizard" element={
               <AuthGuard>
-                <SidebarProvider>
-                  <div className="flex min-h-screen w-full">
-                    <AppSidebar />
-                    <main className="flex-1 p-6 bg-background">
-                      <FilingWizard />
-                    </main>
-                  </div>
-                </SidebarProvider>
+                <LegalConsentGate>
+                  <SidebarProvider>
+                    <div className="flex min-h-screen w-full">
+                      <AppSidebar />
+                      <main className="flex-1 p-6 bg-background">
+                        <FilingWizard />
+                      </main>
+                    </div>
+                  </SidebarProvider>
+                </LegalConsentGate>
               </AuthGuard>
             } />
 
             <Route path="/cost-calculator" element={
               <AuthGuard>
-                <SidebarProvider>
-                  <div className="flex min-h-screen w-full">
-                    <AppSidebar />
-                    <main className="flex-1 p-6 bg-background">
-                      <CostCalculator />
-                    </main>
-                  </div>
-                </SidebarProvider>
+                <LegalConsentGate>
+                  <SidebarProvider>
+                    <div className="flex min-h-screen w-full">
+                      <AppSidebar />
+                      <main className="flex-1 p-6 bg-background">
+                        <CostCalculator />
+                      </main>
+                    </div>
+                  </SidebarProvider>
+                </LegalConsentGate>
               </AuthGuard>
             } />
             

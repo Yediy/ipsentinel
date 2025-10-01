@@ -36,6 +36,12 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
         // If no session, redirect to auth
         if (!session) {
           navigate('/auth');
+          return;
+        }
+
+        // BETA REQUIREMENT: Enforce email verification
+        if (session && !session.user.email_confirmed_at) {
+          navigate('/please-verify');
         }
       }
     );
@@ -57,6 +63,12 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 
       if (!session) {
         navigate('/auth');
+        return;
+      }
+
+      // BETA REQUIREMENT: Enforce email verification
+      if (session && !session.user.email_confirmed_at) {
+        navigate('/please-verify');
       }
     }).catch((error) => {
       if (!mounted) return;
