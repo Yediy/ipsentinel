@@ -1,15 +1,11 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { createSecureResponse, handleCorsPreFlight } from '../_shared/security-headers.ts';
+import { handleError } from '../_shared/error-handler.ts';
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return handleCorsPreFlight();
   }
 
   try {
@@ -52,15 +48,19 @@ serve(async (req) => {
     console.log(`Found ${upcomingDeadlines?.length || 0} upcoming deadlines`);
 
     let emailsSent = 0;
-    const emailSenderUrl = Deno.env.get('EMAIL_SENDER_URL');
 
     for (const deadline of upcomingDeadlines || []) {
       const filing = deadline.filings as any;
       const daysUntilDue = Math.ceil((new Date(deadline.due_on).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
       
       // Determine recipient email
-      const recipientEmail = filing.contact_email || 'user@example.com'; // fallback
+      const recipientEmail = filing.contact_email;
       
+      if (!recipientEmail) {
+        console.log(`No email for filing ${filing.id}, skipping`);
+        continue;
+      }
+
       // Create reminder email
       const emailHtml = `
         <h2>IPGenie Deadline Reminder</h2>
@@ -84,73 +84,40 @@ serve(async (req) => {
         </p>
       `;
 
-      if (emailSenderUrl) {
-        try {
-          const emailResponse = await fetch(emailSenderUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              to: recipientEmail,
-              subject: `Deadline Reminder: ${deadline.label} (${daysUntilDue} days remaining)`,
-              html: emailHtml,
-              filing_id: filing.id,
-              notification_type: 'deadline_reminder'
-            })
-          });
-
-          if (emailResponse.ok) {
-            emailsSent++;
-            console.log(`Reminder sent for deadline ${deadline.id} to ${recipientEmail}`);
-          } else {
-            console.error(`Failed to send reminder for deadline ${deadline.id}`);
-          }
-        } catch (emailError) {
-          console.error(`Error sending email for deadline ${deadline.id}:`, emailError);
-        }
-      } else {
-        // Just create notification if no email service
-        const { error: notifError } = await supabase
-          .from('notifications')
-          .insert({
-            user_id: filing.user_id,
+      try {
+        // Use the email-sender function
+        const { error: emailError } = await supabase.functions.invoke('email-sender', {
+          body: {
+            to: recipientEmail,
+            subject: `Deadline Reminder: ${deadline.label} (${daysUntilDue} days remaining)`,
+            html: emailHtml,
             filing_id: filing.id,
-            type: 'deadline_reminder',
-            title: `Deadline Reminder: ${deadline.label}`,
-            message: `${deadline.label} is due in ${daysUntilDue} days (${new Date(deadline.due_on).toLocaleDateString()})`,
-            read: false
-          });
+            notification_type: 'deadline_reminder'
+          }
+        });
 
-        if (!notifError) {
-          emailsSent++; // count as processed
+        if (emailError) {
+          console.error(`Failed to send email for deadline ${deadline.id}:`, emailError);
+        } else {
+          emailsSent++;
+          console.log(`Reminder sent for deadline ${deadline.id} to ${recipientEmail}`);
         }
+      } catch (emailError) {
+        console.error(`Error sending email for deadline ${deadline.id}:`, emailError);
       }
     }
 
     console.log(`Deadline reminder job completed. Processed ${emailsSent} reminders.`);
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: `Processed ${emailsSent} deadline reminders`,
-        deadlines_found: upcomingDeadlines?.length || 0,
-        emails_sent: emailsSent
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
+    return createSecureResponse({
+      success: true,
+      message: `Processed ${emailsSent} deadline reminders`,
+      deadlines_found: upcomingDeadlines?.length || 0,
+      emails_sent: emailsSent
+    });
 
   } catch (error: any) {
     console.error('Deadline reminder error:', error);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: error.message
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
+    return handleError(error);
   }
 });

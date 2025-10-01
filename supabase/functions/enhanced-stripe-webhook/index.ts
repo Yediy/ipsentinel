@@ -84,14 +84,15 @@ serve(async (req) => {
             throw filingError;
           }
 
-          // Create notification
+          // Create notification and send email
           const { data: filing } = await supabase
             .from('filings')
-            .select('user_id, contact_email, title')
+            .select('user_id, contact_email, title, type')
             .eq('id', session.client_reference_id)
             .single();
 
           if (filing) {
+            // Create notification
             await supabase
               .from('notifications')
               .insert({
@@ -103,6 +104,48 @@ serve(async (req) => {
                 message: `Payment confirmed for "${filing.title}". Your filing is now ready for processing.`,
                 read: false
               });
+
+            // Send confirmation email if contact email exists
+            if (filing.contact_email) {
+              const emailHtml = `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                  <h2 style="color: #10b981;">Payment Confirmed! 🎉</h2>
+                  <p>Your payment has been successfully processed for:</p>
+                  
+                  <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h3 style="margin: 0 0 10px 0;">${filing.title}</h3>
+                    <p style="margin: 5px 0;"><strong>Type:</strong> ${filing.type}</p>
+                    <p style="margin: 5px 0;"><strong>Status:</strong> Ready for processing</p>
+                  </div>
+                  
+                  <p>Your filing is now ready and will be processed shortly.</p>
+                  <p>You can view your filing details by logging into your IPGenie dashboard.</p>
+                  
+                  <p style="margin-top: 30px;">Best regards,<br><strong>The IPGenie Team</strong></p>
+                  
+                  <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+                  <p style="font-size: 12px; color: #6b7280;">
+                    This is an automated email. Please do not reply to this message.
+                  </p>
+                </div>
+              `;
+
+              try {
+                await supabase.functions.invoke('email-sender', {
+                  body: {
+                    to: filing.contact_email,
+                    subject: `Payment Confirmed - ${filing.title}`,
+                    html: emailHtml,
+                    filing_id: session.client_reference_id,
+                    notification_type: 'payment_success'
+                  }
+                });
+                console.log('Payment confirmation email sent to:', filing.contact_email);
+              } catch (emailError) {
+                console.error('Error sending confirmation email:', emailError);
+                // Don't fail the webhook if email fails
+              }
+            }
           }
 
           console.log('Filing updated to ready status:', session.client_reference_id);

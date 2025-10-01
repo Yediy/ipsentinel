@@ -94,14 +94,15 @@ serve(async (req) => {
         console.error("Error adding to queue:", queueError);
       }
 
-      // Create notification
+      // Create notification and send email
       const { data: filing } = await supabase
         .from("filings")
-        .select("contact_email, title")
+        .select("contact_email, title, type")
         .eq("id", filingId)
         .single();
 
-      if (filing) {
+      if (filing && filing.contact_email) {
+        // Create notification
         await supabase
           .from("notifications")
           .insert({
@@ -111,6 +112,48 @@ serve(async (req) => {
             title: 'Payment Successful',
             message: `Your payment for "${filing.title}" has been processed. We're now generating your filing documents.`
           });
+
+        // Send confirmation email
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #10b981;">Payment Successful! 🎉</h2>
+            <p>Thank you for your payment. We've successfully received your payment for:</p>
+            
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <h3 style="margin: 0 0 10px 0;">${filing.title}</h3>
+              <p style="margin: 5px 0;"><strong>Type:</strong> ${filing.type}</p>
+              <p style="margin: 5px 0;"><strong>Status:</strong> Processing</p>
+            </div>
+            
+            <h3>What happens next?</h3>
+            <p>Our AI system is now generating your IP filing documents. This typically takes 5-10 minutes. You'll receive another email when your documents are ready for download.</p>
+            
+            <p>In the meantime, you can track your filing progress by logging into your IPGenie dashboard.</p>
+            
+            <p style="margin-top: 30px;">Best regards,<br><strong>The IPGenie Team</strong></p>
+            
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+            <p style="font-size: 12px; color: #6b7280;">
+              This is an automated email. Please do not reply to this message.
+            </p>
+          </div>
+        `;
+
+        try {
+          await supabase.functions.invoke('email-sender', {
+            body: {
+              to: filing.contact_email,
+              subject: `Payment Confirmed - ${filing.title}`,
+              html: emailHtml,
+              filing_id: filingId,
+              notification_type: 'payment_success'
+            }
+          });
+          console.log('Payment confirmation email sent to:', filing.contact_email);
+        } catch (emailError) {
+          console.error('Error sending confirmation email:', emailError);
+          // Don't fail the webhook if email fails
+        }
       }
 
       // Trigger the generate-filing function
