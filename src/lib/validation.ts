@@ -61,6 +61,24 @@ export const CopyrightFilingSchema = z.object({
   type: z.literal('copyright'),
 });
 
+// EUIPO EUTM Schema (European Union Trademark)
+export const EUIPOMarkSchema = z.object({
+  kind: z.string(),
+  text: z.string().optional(),
+});
+
+export const EUIPOApplicationSchema = z.object({
+  type: z.literal('EUTM'),
+  language: z.string(),
+  mark: EUIPOMarkSchema,
+  applicants: z.array(z.any()).min(1, 'At least one applicant required'),
+  goodsAndServices: z.array(z.any()).min(1, 'At least one class required'),
+});
+
+export const EUIPOFilingSchema = z.object({
+  application: EUIPOApplicationSchema,
+});
+
 // User input schemas
 export const ContactEmailSchema = z.string().email('Invalid email address');
 export const UUIDSchema = z.string().uuid('Invalid UUID format');
