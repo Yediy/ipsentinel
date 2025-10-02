@@ -14,9 +14,46 @@ serve(async (req) => {
   }
 
   try {
+    // Require authentication
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        }
+      );
+    }
+
+    const jwt = authHeader.slice(7).trim();
+    
     console.log("Create payment function called");
     
-    const { plan, filingData, contactEmail } = await req.json();
+    // Create authenticated Supabase client
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") || "",
+      Deno.env.get("SUPABASE_ANON_KEY") || "",
+      {
+        global: {
+          headers: { Authorization: `Bearer ${jwt}` }
+        }
+      }
+    );
+
+    // Verify user is authenticated
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid authentication token' }),
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        }
+      );
+    }
+    
+    const { plan, filingData } = await req.json();
     console.log("Plan requested:", plan);
     console.log("Filing data:", filingData);
 
@@ -34,17 +71,11 @@ serve(async (req) => {
     const selectedPlan = (planPricing as any)[plan];
     console.log("Selected plan:", selectedPlan);
 
-    // Create Supabase client with service role for database operations
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") || "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
-    );
-
-    // Create filing record first
+    // Create filing record first (authenticated)
     const { data: filing, error: filingError } = await supabase
       .from("filings")
       .insert({
-        contact_email: contactEmail,
+        user_id: user.id,
         type: filingData.type,
         country: filingData.country || 'US',
         title: filingData.title,
@@ -71,7 +102,7 @@ serve(async (req) => {
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
       client_reference_id: filing.id, // Link session to filing
-      customer_email: contactEmail,
+      customer_email: user.email,
       line_items: [
         {
           price_data: {

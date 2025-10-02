@@ -19,6 +19,33 @@ serve(async (req) => {
   }
 
   try {
+    // Require authentication
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' }}
+      );
+    }
+
+    const jwt = authHeader.slice(7).trim();
+    
+    // Create authenticated Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: `Bearer ${jwt}` }}
+    });
+
+    // Verify user is authenticated
+    const { data: { user }, error: userError } = await authClient.auth.getUser();
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid authentication token' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' }}
+      );
+    }
+    
     const { to, from, subject, html, filing_id, notification_type }: EmailRequest = await req.json();
     
     // Validate required fields
@@ -44,8 +71,7 @@ serve(async (req) => {
       throw createValidationError('HTML content too long (max 500KB)');
     }
 
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    // Initialize Supabase service client for database operations
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 

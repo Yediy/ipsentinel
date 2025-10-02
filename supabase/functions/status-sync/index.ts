@@ -9,7 +9,49 @@ serve(async (req) => {
   }
 
   try {
+    // Require authentication (admin only for sync jobs)
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' }}
+      );
+    }
+
+    const jwt = authHeader.slice(7).trim();
+    
+    // Create authenticated Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: `Bearer ${jwt}` }}
+    });
+
+    // Verify user is authenticated and is admin
+    const { data: { user }, error: userError } = await authClient.auth.getUser();
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid authentication token' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' }}
+      );
+    }
+
+    // Check if user has admin role
+    const { data: roleData } = await authClient
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .maybeSingle();
+
+    if (!roleData) {
+      return new Response(
+        JSON.stringify({ error: 'Admin access required' }),
+        { status: 403, headers: { 'Content-Type': 'application/json' }}
+      );
+    }
+
+    // Use service role for sync operations
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -44,15 +86,17 @@ serve(async (req) => {
           
           // Log to audit if there was an error (not just no data)
           if (tsdrError) {
-            await supabase.from('audit_log').insert({
-              action: 'status_sync_error',
-              subject_type: 'filing',
-              subject_id: filing.id,
-              user_id: filing.user_id,
-              metadata: {
+            await supabase.rpc('audit_log_append', {
+              p_user_id: filing.user_id,
+              p_action: 'status_sync_error',
+              p_subject_type: 'filing',
+              p_subject_id: filing.id,
+              p_metadata: {
                 serial: filing.tm_mark_text,
                 error: tsdrError.message || String(tsdrError)
-              }
+              },
+              p_ip: null,
+              p_ua: null
             }).catch(err => console.error('Failed to log audit:', err));
           }
           
@@ -71,14 +115,16 @@ serve(async (req) => {
         if (updateError) {
           console.error(`Failed to update filing ${filing.id}:`, updateError);
           
-          await supabase.from('audit_log').insert({
-            action: 'status_sync_update_error',
-            subject_type: 'filing',
-            subject_id: filing.id,
-            user_id: filing.user_id,
-            metadata: {
+          await supabase.rpc('audit_log_append', {
+            p_user_id: filing.user_id,
+            p_action: 'status_sync_update_error',
+            p_subject_type: 'filing',
+            p_subject_id: filing.id,
+            p_metadata: {
               error: updateError.message || String(updateError)
-            }
+            },
+            p_ip: null,
+            p_ua: null
           }).catch(err => console.error('Failed to log audit:', err));
         } else {
           updatedCount++;
@@ -87,14 +133,16 @@ serve(async (req) => {
       } catch (error: any) {
         console.error(`Error processing filing ${filing.id}:`, error);
         
-        await supabase.from('audit_log').insert({
-          action: 'status_sync_exception',
-          subject_type: 'filing',
-          subject_id: filing.id,
-          user_id: filing.user_id,
-          metadata: {
+        await supabase.rpc('audit_log_append', {
+          p_user_id: filing.user_id,
+          p_action: 'status_sync_exception',
+          p_subject_type: 'filing',
+          p_subject_id: filing.id,
+          p_metadata: {
             error: error.message || String(error)
-          }
+          },
+          p_ip: null,
+          p_ua: null
         }).catch(err => console.error('Failed to log audit:', err));
       }
     }

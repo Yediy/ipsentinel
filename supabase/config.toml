@@ -1,11 +1,5 @@
 project_id = "myygzczpldyovvqvbwbk"
 
-[functions.status-sync]
-verify_jwt = false
-
-[functions.create-payment]
-verify_jwt = false
-
 [functions.stripe-webhook]
 verify_jwt = false
 
@@ -24,20 +18,5 @@ verify_jwt = false
 [functions.rate-limited-wrapper]
 verify_jwt = false
 
-[functions.email-sender]
-verify_jwt = false
-
-[functions.tm-tsdr]
-verify_jwt = false
-
-[functions.patent-ops-search]
-verify_jwt = false
-
 [functions.deadline-reminder]
-verify_jwt = false
-
-[functions.drawing-upload]
-verify_jwt = false
-
-[functions.drawing-generator]
 verify_jwt = false
