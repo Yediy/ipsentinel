@@ -654,6 +654,7 @@ export type Database = {
           full_name: string | null
           id: string
           role: string | null
+          tos_accepted_at: string | null
           updated_at: string
           user_id: string
         }
@@ -663,6 +664,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           role?: string | null
+          tos_accepted_at?: string | null
           updated_at?: string
           user_id: string
         }
@@ -672,6 +674,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           role?: string | null
+          tos_accepted_at?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -894,6 +897,10 @@ export type Database = {
       compute_deadlines_for_filing: {
         Args: { filing_id: string }
         Returns: undefined
+      }
+      extract_filing_id_from_path: {
+        Args: { path: string }
+        Returns: string
       }
       has_role: {
         Args: {

@@ -1,0 +1,29 @@
+name: Security
+on:
+  push: 
+    branches: [ main ]
+  schedule: 
+    - cron: "0 6 * * *"
+
+jobs:
+  deps-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: 
+          node-version: 20
+      - run: npm ci
+      - run: npm audit --omit=dev || true
+      
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: TruffleHog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: .
+          extra_args: --only-verified
