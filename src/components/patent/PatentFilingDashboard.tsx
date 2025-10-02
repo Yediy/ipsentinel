@@ -27,6 +27,12 @@ export const PatentFilingDashboard: React.FC<PatentFilingDashboardProps> = ({
 
   const handleStartPatentFiling = async () => {
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("You must be logged in to create a filing");
+      }
+
       // Create a new patent filing
       const { data: filing, error } = await supabase
         .from('filings')
@@ -35,7 +41,7 @@ export const PatentFilingDashboard: React.FC<PatentFilingDashboardProps> = ({
           country: 'US',
           title: 'New Patent Application',
           status: 'draft',
-          contact_email: 'user@example.com' // In production, get from auth
+          user_id: user.id
         })
         .select()
         .single();
