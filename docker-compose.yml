@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - NODE_ENV=production
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - CORS_ORIGINS=${CORS_ORIGINS}
+      - ALLOWED_ASSET_HOSTS=${ALLOWED_ASSET_HOSTS}
+      - STRIPE_API_KEY=${STRIPE_API_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - LOVABLE_DOC_WEBHOOK_SECRET=${LOVABLE_DOC_WEBHOOK_SECRET}
+      - SENTRY_DSN=${SENTRY_DSN}
+      - MAX_UPLOAD_BYTES=${MAX_UPLOAD_BYTES}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

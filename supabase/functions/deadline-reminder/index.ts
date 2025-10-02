@@ -98,12 +98,37 @@ serve(async (req) => {
 
         if (emailError) {
           console.error(`Failed to send email for deadline ${deadline.id}:`, emailError);
+          
+          // Log to audit table
+          await supabase.from('audit_log').insert({
+            action: 'deadline_email_error',
+            subject_type: 'deadline',
+            subject_id: deadline.id,
+            user_id: filing.user_id,
+            metadata: {
+              to: recipientEmail,
+              error: emailError.message || String(emailError),
+              deadline_label: deadline.label
+            }
+          });
         } else {
           emailsSent++;
           console.log(`Reminder sent for deadline ${deadline.id} to ${recipientEmail}`);
         }
-      } catch (emailError) {
+      } catch (emailError: any) {
         console.error(`Error sending email for deadline ${deadline.id}:`, emailError);
+        
+        // Log exception to audit
+        await supabase.from('audit_log').insert({
+          action: 'deadline_email_exception',
+          subject_type: 'deadline',
+          subject_id: deadline.id,
+          user_id: filing.user_id,
+          metadata: {
+            to: recipientEmail,
+            error: emailError.message || String(emailError)
+          }
+        }).catch(err => console.error('Failed to log audit:', err));
       }
     }
 

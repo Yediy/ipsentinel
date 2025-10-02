@@ -41,6 +41,21 @@ serve(async (req) => {
 
         if (tsdrError || !tsdrData?.success) {
           console.log(`No status found for filing ${filing.id}`);
+          
+          // Log to audit if there was an error (not just no data)
+          if (tsdrError) {
+            await supabase.from('audit_log').insert({
+              action: 'status_sync_error',
+              subject_type: 'filing',
+              subject_id: filing.id,
+              user_id: filing.user_id,
+              metadata: {
+                serial: filing.tm_mark_text,
+                error: tsdrError.message || String(tsdrError)
+              }
+            }).catch(err => console.error('Failed to log audit:', err));
+          }
+          
           continue;
         }
 
@@ -55,12 +70,32 @@ serve(async (req) => {
 
         if (updateError) {
           console.error(`Failed to update filing ${filing.id}:`, updateError);
+          
+          await supabase.from('audit_log').insert({
+            action: 'status_sync_update_error',
+            subject_type: 'filing',
+            subject_id: filing.id,
+            user_id: filing.user_id,
+            metadata: {
+              error: updateError.message || String(updateError)
+            }
+          }).catch(err => console.error('Failed to log audit:', err));
         } else {
           updatedCount++;
           console.log(`Updated status for filing ${filing.id}`);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error(`Error processing filing ${filing.id}:`, error);
+        
+        await supabase.from('audit_log').insert({
+          action: 'status_sync_exception',
+          subject_type: 'filing',
+          subject_id: filing.id,
+          user_id: filing.user_id,
+          metadata: {
+            error: error.message || String(error)
+          }
+        }).catch(err => console.error('Failed to log audit:', err));
       }
     }
 

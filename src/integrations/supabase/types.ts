@@ -14,6 +14,18 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_users: {
+        Row: {
+          user_id: string
+        }
+        Insert: {
+          user_id: string
+        }
+        Update: {
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_filing_sessions: {
         Row: {
           ai_model_used: string | null
@@ -103,6 +115,42 @@ export type Database = {
           template_type?: string
           updated_at?: string
           version?: number | null
+        }
+        Relationships: []
+      }
+      audit_log: {
+        Row: {
+          action: string
+          created_at: string | null
+          id: number
+          ip: string | null
+          metadata: Json | null
+          subject_id: string | null
+          subject_type: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          id?: number
+          ip?: string | null
+          metadata?: Json | null
+          subject_id?: string | null
+          subject_type?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          id?: number
+          ip?: string | null
+          metadata?: Json | null
+          subject_id?: string | null
+          subject_type?: string | null
+          user_agent?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -677,6 +725,24 @@ export type Database = {
           tos_accepted_at?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      settings: {
+        Row: {
+          key: string
+          updated_at: string | null
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string | null
+          value?: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string | null
+          value?: Json
         }
         Relationships: []
       }
