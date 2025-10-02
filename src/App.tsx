@@ -7,6 +7,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import SpaceBackground from "./components/SpaceBackground";
 import { AppSidebar } from "./components/AppSidebar";
 import { AuthGuard } from "./components/AuthGuard";
+import { AdminGuard } from "./components/AdminGuard";
 import { LegalConsentGate } from "./components/LegalConsentGate";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -49,7 +50,22 @@ const App = () => (
             <Route path="/calculator" element={<IPGenieCostCalculator />} />
             <Route path="/prior-art" element={<PriorArtSearch />} />
             <Route path="/tm-status" element={<TrademarkStatus />} />
-            <Route path="/admin" element={<AdminDashboard />} />
+            
+            {/* Admin Route - Protected */}
+            <Route path="/admin" element={
+              <AuthGuard>
+                <AdminGuard>
+                  <SidebarProvider>
+                    <div className="flex min-h-screen w-full">
+                      <AppSidebar />
+                      <main className="flex-1 p-6 bg-background">
+                        <AdminDashboard />
+                      </main>
+                    </div>
+                  </SidebarProvider>
+                </AdminGuard>
+              </AuthGuard>
+            } />
             
             {/* Protected Routes with Sidebar - Wrapped in AuthGuard and LegalConsentGate */}
             <Route path="/dashboard" element={
