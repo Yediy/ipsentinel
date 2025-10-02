@@ -943,21 +943,7 @@ export type Database = {
       }
     }
     Views: {
-      user_agreements_v1: {
-        Row: {
-          accepted: boolean | null
-          user_id: string | null
-        }
-        Insert: {
-          accepted?: never
-          user_id?: string | null
-        }
-        Update: {
-          accepted?: never
-          user_id?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       compute_deadlines_for_filing: {
