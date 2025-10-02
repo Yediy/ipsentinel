@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Shield, Mail, Lock, User, Building } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { ensureProfile } from "@/lib/auth-utils";
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -31,6 +32,10 @@ const Auth = () => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
+        // Ensure profile exists after successful auth (client-side fallback)
+        setTimeout(() => {
+          ensureProfile().catch(console.error);
+        }, 0);
         navigate('/dashboard');
       }
     });
@@ -72,6 +77,11 @@ const Auth = () => {
           });
         }
       } else {
+        // Ensure profile exists after successful signup (belt & suspenders)
+        setTimeout(() => {
+          ensureProfile().catch(console.error);
+        }, 0);
+        
         toast({
           title: "Success!",
           description: "Please check your email to verify your account.",
@@ -104,6 +114,11 @@ const Auth = () => {
           description: error.message,
           variant: "destructive"
         });
+      } else {
+        // Ensure profile exists after successful sign-in (belt & suspenders)
+        setTimeout(() => {
+          ensureProfile().catch(console.error);
+        }, 0);
       }
     } catch (error) {
       toast({
