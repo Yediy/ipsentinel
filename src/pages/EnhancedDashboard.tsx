@@ -18,6 +18,7 @@ import {
   Globe
 } from "lucide-react";
 import { Link } from 'react-router-dom';
+import { AdminQuickAccessCard } from "@/components/admin/AdminQuickAccessCard";
 
 interface Filing {
   id: string;
@@ -42,6 +43,7 @@ const EnhancedDashboard = () => {
   const [filings, setFilings] = useState<Filing[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [stats, setStats] = useState({
     totalFilings: 0,
     pendingFilings: 0,
@@ -60,6 +62,15 @@ const EnhancedDashboard = () => {
       
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
+
+      // Check admin status
+      const { data: adminData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', session.user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+      setIsAdmin(!!adminData);
 
       // Load filings
       const { data: filingsData, error: filingsError } = await supabase
@@ -168,6 +179,11 @@ const EnhancedDashboard = () => {
           </Button>
         </Link>
       </div>
+
+      {/* Admin Quick Access - Only show for admins */}
+      {isAdmin && (
+        <AdminQuickAccessCard />
+      )}
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

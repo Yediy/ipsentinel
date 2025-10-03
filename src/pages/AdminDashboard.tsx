@@ -13,10 +13,15 @@ import {
   AlertCircle,
   CheckCircle,
   BarChart3,
-  Calendar
+  Calendar,
+  Settings
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { AdminBanner } from "@/components/admin/AdminBanner";
+import { UserManagement } from "@/components/admin/UserManagement";
+import { SystemHealth } from "@/components/admin/SystemHealth";
 
 interface DashboardStats {
   totalFilings: number;
@@ -137,16 +142,26 @@ const AdminDashboard = () => {
 
   return (
     <div className="container max-w-7xl mx-auto py-8">
+      <AdminBanner />
+      
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
           <p className="text-muted-foreground">
-            Overview of IPGenie platform activity
+            Overview of IPSentinel platform activity
           </p>
         </div>
-        <Button onClick={fetchDashboardData} variant="outline">
-          Refresh Data
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="outline">
+            <Link to="/admin/settings">
+              <Settings className="mr-2 h-4 w-4" />
+              Settings
+            </Link>
+          </Button>
+          <Button onClick={fetchDashboardData} variant="outline">
+            Refresh Data
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -204,11 +219,16 @@ const AdminDashboard = () => {
         </Card>
       </div>
 
+      {/* System Health */}
+      <div className="mb-8">
+        <SystemHealth />
+      </div>
+
       {/* Detailed Views */}
       <Tabs defaultValue="filings" className="space-y-6">
         <TabsList>
           <TabsTrigger value="filings">Recent Filings</TabsTrigger>
-          <TabsTrigger value="users">Recent Users</TabsTrigger>
+          <TabsTrigger value="users">User Management</TabsTrigger>
           <TabsTrigger value="deadlines">Upcoming Deadlines</TabsTrigger>
         </TabsList>
 
@@ -254,36 +274,7 @@ const AdminDashboard = () => {
         </TabsContent>
 
         <TabsContent value="users">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Recent Users
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Joined</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {stats.recentUsers.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">
-                        {user.full_name || 'No name provided'}
-                      </TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>{formatDate(user.created_at)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <UserManagement />
         </TabsContent>
 
         <TabsContent value="deadlines">

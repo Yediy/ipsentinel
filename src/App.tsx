@@ -26,6 +26,7 @@ import DrawingsDemo from "./pages/DrawingsDemo";
 import IPGenieWizard from "./pages/IPGenieWizard";
 import IPGenieCostCalculator from "./pages/IPGenieCostCalculator";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminSettings from "./pages/AdminSettings";
 import PriorArtSearch from "./pages/PriorArtSearch";
 import TrademarkStatus from "./pages/TrademarkStatus";
 
@@ -51,7 +52,7 @@ const App = () => (
             <Route path="/prior-art" element={<PriorArtSearch />} />
             <Route path="/tm-status" element={<TrademarkStatus />} />
             
-            {/* Admin Route - Protected */}
+            {/* Admin Routes - Protected */}
             <Route path="/admin" element={
               <AuthGuard>
                 <AdminGuard>
@@ -60,6 +61,21 @@ const App = () => (
                       <AppSidebar />
                       <main className="flex-1 p-6 bg-background">
                         <AdminDashboard />
+                      </main>
+                    </div>
+                  </SidebarProvider>
+                </AdminGuard>
+              </AuthGuard>
+            } />
+            
+            <Route path="/admin/settings" element={
+              <AuthGuard>
+                <AdminGuard>
+                  <SidebarProvider>
+                    <div className="flex min-h-screen w-full">
+                      <AppSidebar />
+                      <main className="flex-1 p-6 bg-background">
+                        <AdminSettings />
                       </main>
                     </div>
                   </SidebarProvider>

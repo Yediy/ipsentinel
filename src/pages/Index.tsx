@@ -9,6 +9,7 @@ import { User as SupabaseUser } from '@supabase/supabase-js';
 
 const Index = () => {
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -17,14 +18,39 @@ const Index = () => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user || null);
+      
+      // Check admin status
+      if (session?.user) {
+        const { data } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .eq('role', 'admin')
+          .maybeSingle();
+        setIsAdmin(!!data);
+      }
+      
       setLoading(false);
     };
 
     checkAuth();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user || null);
+      
+      if (session?.user) {
+        const { data } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .eq('role', 'admin')
+          .maybeSingle();
+        setIsAdmin(!!data);
+      } else {
+        setIsAdmin(false);
+      }
+      
       setLoading(false);
     });
 
@@ -33,9 +59,23 @@ const Index = () => {
 
   const AuthenticatedHeader = () => (
     <div className="text-center space-y-4 mb-12">
-      <div className="inline-flex items-center space-x-2 bg-white/10 rounded-full px-4 py-2 mb-4">
-        <User className="h-4 w-4 text-white" />
-        <span className="text-sm font-medium text-white">Welcome back, {user?.email}</span>
+      <div className="flex flex-col items-center gap-3 mb-4">
+        <div className="inline-flex items-center space-x-2 bg-white/10 rounded-full px-4 py-2">
+          <User className="h-4 w-4 text-white" />
+          <span className="text-sm font-medium text-white">Welcome back, {user?.email}</span>
+        </div>
+        {isAdmin && (
+          <Link to="/admin">
+            <Button 
+              size="lg" 
+              className="bg-red-600 hover:bg-red-700 text-white shadow-lg animate-pulse border-2 border-red-400"
+            >
+              <Shield className="mr-2 h-5 w-5" />
+              Admin Dashboard
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+          </Link>
+        )}
       </div>
       <h1 className="text-4xl lg:text-6xl font-bold mb-6 leading-tight text-white">
         Ready to Protect Your IP?

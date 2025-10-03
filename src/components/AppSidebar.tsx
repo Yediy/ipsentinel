@@ -129,14 +129,29 @@ export function AppSidebar() {
   return (
     <Sidebar className="w-64" collapsible="icon">
       <SidebarHeader className="border-b p-4">
-        <div className="flex items-center space-x-3">
-          <div className="bg-primary/10 rounded-full p-2">
-            <Shield className="h-6 w-6 text-primary" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="bg-primary/10 rounded-full p-2">
+              <Shield className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="font-bold text-lg">IPSentinel</h1>
+              <p className="text-sm text-muted-foreground">AI IP Filing</p>
+            </div>
           </div>
-          <div>
-            <h1 className="font-bold text-lg">IPSentinel</h1>
-            <p className="text-sm text-muted-foreground">AI IP Filing</p>
-          </div>
+          {isAdmin && (
+            <NavLink to="/admin">
+              {({ isActive }) => (
+                <div className={`p-2 rounded-lg transition-colors ${
+                  isActive ? 'bg-red-100 dark:bg-red-900/30' : 'hover:bg-red-50 dark:hover:bg-red-900/20'
+                }`}>
+                  <Shield className={`h-5 w-5 ${
+                    isActive ? 'text-red-600 dark:text-red-400' : 'text-red-500'
+                  } animate-pulse`} />
+                </div>
+              )}
+            </NavLink>
+          )}
         </div>
       </SidebarHeader>
 
