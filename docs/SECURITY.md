@@ -1,5 +1,16 @@
 # Security Guidelines
 
+## Recent Security Updates (2025-10-03)
+
+✅ **Critical security fixes applied** - See [SECURITY_FIXES_APPLIED.md](./SECURITY_FIXES_APPLIED.md) for details.
+
+**Key improvements**:
+- Removed authentication bypass vulnerabilities
+- Secured role management with dedicated endpoint
+- Protected audit logs from tampering
+- Strengthened storage bucket access controls
+- Eliminated privilege escalation risks
+
 ## Environment Variables
 
 **CRITICAL**: Never commit `.env` files to version control.
@@ -32,11 +43,16 @@ SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
 - [x] RLS enabled on all user tables
 - [x] Email verification required
 - [x] Legal consent gate
-- [x] Private storage buckets
-- [x] CORS headers configured
+- [x] Private storage buckets with MIME type restrictions
+- [x] CORS validation helper (requires CORS_ORIGINS configuration)
 - [x] Security headers (CSP, HSTS, etc.)
 - [x] SSRF protection on asset fetches
 - [x] Input validation with Zod schemas
+- [x] Role management via secure edge function
+- [x] Audit log protected from tampering
+- [x] No authentication bypass vulnerabilities
+- [ ] Password policies configured (manual - see SECURITY_FIXES_APPLIED.md)
+- [ ] CORS_ORIGINS environment variable set (manual)
 
 ## If .env Was Accidentally Committed
 

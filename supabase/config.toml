@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.document-webhook]
 verify_jwt = false
+
+[functions.admin-manage-roles]
+verify_jwt = true
