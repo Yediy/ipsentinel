@@ -2,13 +2,27 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.2';
 
-// Note: In production, you would use a service like Resend, SendGrid, or Postmark
-// For this implementation, we'll create a stub that logs emails and could be extended
+const ALLOWED_ORIGINS = [
+  "https://ipsentinel.lovable.app",
+  "http://localhost:5173",
+  "http://localhost:3000"
+];
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+function getCorsHeaders(origin: string | null) {
+  return {
+    "Access-Control-Allow-Origin": origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0],
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Credentials": "true",
+  };
+}
+
+function requireAuth(req: Request): string {
+  const auth = req.headers.get("authorization") || "";
+  if (!auth.toLowerCase().startsWith("bearer ")) {
+    throw new Response(JSON.stringify({ error: "AuthRequired" }), { status: 401 });
+  }
+  return auth.slice(7).trim();
+}
 
 interface EmailRequest {
   to: string;
@@ -19,12 +33,18 @@ interface EmailRequest {
 }
 
 serve(async (req) => {
+  const origin = req.headers.get("origin");
+  const corsHeaders = getCorsHeaders(origin);
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Require authentication
+    const jwt = requireAuth(req);
+
     const { to, subject, html, filing_id, notification_type }: EmailRequest = await req.json();
     
     if (!to || !subject || !html) {
@@ -33,8 +53,12 @@ serve(async (req) => {
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseAnon = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseAnon, {
+      global: {
+        headers: { Authorization: `Bearer ${jwt}` }
+      }
+    });
 
     // For MVP/pilot: Log email instead of sending
     // In production, replace this with actual email service
@@ -46,12 +70,14 @@ serve(async (req) => {
     console.log('HTML Body:', html);
     console.log('========================');
 
+    // Get user_id from the authenticated user
+    const { data: { user } } = await supabase.auth.getUser();
+    
     // Create an email log record for tracking
     const { error: logError } = await supabase
       .from('notifications')
       .insert({
-        user_id: null, // Could be resolved from filing_id if needed
-        contact_email: to,
+        user_id: user?.id || null,
         filing_id: filing_id || null,
         type: notification_type || 'email',
         title: subject,

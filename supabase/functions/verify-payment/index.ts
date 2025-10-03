@@ -2,18 +2,41 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const ALLOWED_ORIGINS = [
+  "https://ipsentinel.lovable.app",
+  "http://localhost:5173",
+  "http://localhost:3000"
+];
+
+function getCorsHeaders(origin: string | null) {
+  return {
+    "Access-Control-Allow-Origin": origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0],
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Credentials": "true",
+  };
+}
+
+function requireAuth(req: Request): string {
+  const auth = req.headers.get("authorization") || "";
+  if (!auth.toLowerCase().startsWith("bearer ")) {
+    throw new Response(JSON.stringify({ error: "AuthRequired" }), { status: 401 });
+  }
+  return auth.slice(7).trim();
+}
 
 serve(async (req) => {
+  const origin = req.headers.get("origin");
+  const corsHeaders = getCorsHeaders(origin);
+
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Require authentication
+    const jwt = requireAuth(req);
+    
     const { session_id } = await req.json();
     console.log("Verifying payment for session:", session_id);
 
@@ -23,7 +46,12 @@ serve(async (req) => {
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") || "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
+      Deno.env.get("SUPABASE_ANON_KEY") || "",
+      {
+        global: {
+          headers: { Authorization: `Bearer ${jwt}` }
+        }
+      }
     );
 
     // Get session from Stripe

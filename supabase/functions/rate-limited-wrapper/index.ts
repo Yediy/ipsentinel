@@ -1,13 +1,30 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
+const ALLOWED_ORIGINS = [
+  "https://ipsentinel.lovable.app",
+  "http://localhost:5173",
+  "http://localhost:3000"
+];
+
+function getCorsHeaders(origin: string | null) {
+  return {
+    "Access-Control-Allow-Origin": origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0],
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Credentials": "true",
+  };
+}
+
+function requireAuth(req: Request): string {
+  const auth = req.headers.get("authorization") || "";
+  if (!auth.toLowerCase().startsWith("bearer ")) {
+    throw new Response(JSON.stringify({ error: "AuthRequired" }), { status: 401 });
+  }
+  return auth.slice(7).trim();
+}
+
 // Simple in-memory rate limiting (for production, use Redis or similar)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
 
 interface RateLimitConfig {
   windowMs: number;
@@ -87,12 +104,17 @@ setInterval(() => {
 }, 5 * 60 * 1000); // Clean up every 5 minutes
 
 serve(async (req) => {
+  const origin = req.headers.get("origin");
+  const corsHeaders = getCorsHeaders(origin);
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Require authentication
+    requireAuth(req);
     const url = new URL(req.url);
     const endpoint = getEndpointFromPath(url.pathname);
     const config = rateLimits[endpoint];

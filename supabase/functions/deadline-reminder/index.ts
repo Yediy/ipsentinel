@@ -3,16 +3,45 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.2';
 import { createSecureResponse, handleCorsPreFlight } from '../_shared/security-headers.ts';
 import { handleError } from '../_shared/error-handler.ts';
 
+const ALLOWED_ORIGINS = [
+  "https://ipsentinel.lovable.app",
+  "http://localhost:5173",
+  "http://localhost:3000"
+];
+
+function getCorsHeaders(origin: string | null) {
+  return {
+    "Access-Control-Allow-Origin": origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0],
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Credentials": "true",
+  };
+}
+
+function requireAuth(req: Request): string {
+  const auth = req.headers.get("authorization") || "";
+  if (!auth.toLowerCase().startsWith("bearer ")) {
+    throw new Response(JSON.stringify({ error: "AuthRequired" }), { status: 401 });
+  }
+  return auth.slice(7).trim();
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return handleCorsPreFlight();
   }
 
   try {
+    // Require authentication
+    const jwt = requireAuth(req);
+
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseAnon = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseAnon, {
+      global: {
+        headers: { Authorization: `Bearer ${jwt}` }
+      }
+    });
 
     console.log('Running deadline reminder job...');
 
@@ -30,10 +59,10 @@ serve(async (req) => {
         filings!inner(
           id,
           user_id,
-          contact_email,
           title,
           country_code,
-          type
+          type,
+          profiles:user_id (email)
         )
       `)
       .eq('done', false)
@@ -53,8 +82,8 @@ serve(async (req) => {
       const filing = deadline.filings as any;
       const daysUntilDue = Math.ceil((new Date(deadline.due_on).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
       
-      // Determine recipient email
-      const recipientEmail = filing.contact_email;
+      // Get recipient email from profile
+      const recipientEmail = filing.profiles?.email;
       
       if (!recipientEmail) {
         console.log(`No email for filing ${filing.id}, skipping`);
@@ -99,17 +128,19 @@ serve(async (req) => {
         if (emailError) {
           console.error(`Failed to send email for deadline ${deadline.id}:`, emailError);
           
-          // Log to audit table
-          await supabase.from('audit_log').insert({
-            action: 'deadline_email_error',
-            subject_type: 'deadline',
-            subject_id: deadline.id,
-            user_id: filing.user_id,
-            metadata: {
+          // Log to audit using secure function
+          await supabase.rpc('audit_log_append', {
+            p_user_id: filing.user_id,
+            p_action: 'deadline_email_error',
+            p_subject_type: 'deadline',
+            p_subject_id: deadline.id,
+            p_metadata: {
               to: recipientEmail,
               error: emailError.message || String(emailError),
               deadline_label: deadline.label
-            }
+            },
+            p_ip: null,
+            p_ua: null
           });
         } else {
           emailsSent++;
@@ -118,16 +149,18 @@ serve(async (req) => {
       } catch (emailError: any) {
         console.error(`Error sending email for deadline ${deadline.id}:`, emailError);
         
-        // Log exception to audit
-        await supabase.from('audit_log').insert({
-          action: 'deadline_email_exception',
-          subject_type: 'deadline',
-          subject_id: deadline.id,
-          user_id: filing.user_id,
-          metadata: {
+        // Log exception using secure function
+        await supabase.rpc('audit_log_append', {
+          p_user_id: filing.user_id,
+          p_action: 'deadline_email_exception',
+          p_subject_type: 'deadline',
+          p_subject_id: deadline.id,
+          p_metadata: {
             to: recipientEmail,
             error: emailError.message || String(emailError)
-          }
+          },
+          p_ip: null,
+          p_ua: null
         }).catch(err => console.error('Failed to log audit:', err));
       }
     }

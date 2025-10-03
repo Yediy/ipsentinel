@@ -87,26 +87,35 @@ serve(async (req) => {
           // Create notification and send email
           const { data: filing } = await supabase
             .from('filings')
-            .select('user_id, contact_email, title, type')
+            .select(`
+              id,
+              title,
+              type,
+              user_id,
+              profiles:user_id (email)
+            `)
             .eq('id', session.client_reference_id)
             .single();
 
           if (filing) {
-            // Create notification
-            await supabase
-              .from('notifications')
-              .insert({
-                user_id: filing.user_id,
-                contact_email: filing.contact_email,
-                filing_id: session.client_reference_id,
-                type: 'payment_success',
-                title: 'Payment Confirmed',
-                message: `Payment confirmed for "${filing.title}". Your filing is now ready for processing.`,
-                read: false
-              });
+            const userEmail = filing.profiles?.email;
+            
+            if (!userEmail) {
+              console.error('No email found for user:', filing.user_id);
+            } else {
+              // Create notification
+              await supabase
+                .from('notifications')
+                .insert({
+                  user_id: filing.user_id,
+                  filing_id: session.client_reference_id,
+                  type: 'payment_success',
+                  title: 'Payment Confirmed',
+                  message: `Payment confirmed for "${filing.title}". Your filing is now ready for processing.`,
+                  read: false
+                });
 
-            // Send confirmation email if contact email exists
-            if (filing.contact_email) {
+              // Send confirmation email
               const emailHtml = `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                   <h2 style="color: #10b981;">Payment Confirmed! 🎉</h2>
@@ -133,14 +142,14 @@ serve(async (req) => {
               try {
                 await supabase.functions.invoke('email-sender', {
                   body: {
-                    to: filing.contact_email,
+                    to: userEmail,
                     subject: `Payment Confirmed - ${filing.title}`,
                     html: emailHtml,
                     filing_id: session.client_reference_id,
                     notification_type: 'payment_success'
                   }
                 });
-                console.log('Payment confirmation email sent to:', filing.contact_email);
+                console.log('Payment confirmation email sent to:', userEmail);
               } catch (emailError) {
                 console.error('Error sending confirmation email:', emailError);
                 // Don't fail the webhook if email fails

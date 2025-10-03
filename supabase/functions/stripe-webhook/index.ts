@@ -94,20 +94,36 @@ serve(async (req) => {
         console.error("Error adding to queue:", queueError);
       }
 
-      // Create notification and send email
+      // Get filing with user email
       const { data: filing } = await supabase
         .from("filings")
-        .select("contact_email, title, type")
+        .select(`
+          id,
+          title,
+          type,
+          user_id,
+          profiles:user_id (email)
+        `)
         .eq("id", filingId)
         .single();
 
-      if (filing && filing.contact_email) {
+      if (filing) {
+        const userEmail = filing.profiles?.email;
+        
+        if (!userEmail) {
+          console.error('No email found for user:', filing.user_id);
+          return new Response(JSON.stringify({ error: 'User email not found' }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400,
+          });
+        }
+
         // Create notification
         await supabase
           .from("notifications")
           .insert({
             filing_id: filingId,
-            contact_email: filing.contact_email,
+            user_id: filing.user_id,
             type: 'success',
             title: 'Payment Successful',
             message: `Your payment for "${filing.title}" has been processed. We're now generating your filing documents.`
@@ -142,14 +158,14 @@ serve(async (req) => {
         try {
           await supabase.functions.invoke('email-sender', {
             body: {
-              to: filing.contact_email,
+              to: userEmail,
               subject: `Payment Confirmed - ${filing.title}`,
               html: emailHtml,
               filing_id: filingId,
               notification_type: 'payment_success'
             }
           });
-          console.log('Payment confirmation email sent to:', filing.contact_email);
+          console.log('Payment confirmation email sent to:', userEmail);
         } catch (emailError) {
           console.error('Error sending confirmation email:', emailError);
           // Don't fail the webhook if email fails
