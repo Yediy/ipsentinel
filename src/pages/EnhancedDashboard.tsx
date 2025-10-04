@@ -335,6 +335,12 @@ const EnhancedDashboard = () => {
             <div className="border-t pt-4 space-y-2">
               <h4 className="font-medium text-sm mb-3">Quick Actions</h4>
               <div className="grid grid-cols-2 gap-2">
+                <Link to="/international-filing">
+                  <Button variant="outline" size="sm" className="w-full justify-start">
+                    <Globe className="h-4 w-4 mr-2" />
+                    International Filing
+                  </Button>
+                </Link>
                 <Link to="/filing/wizard?type=patent">
                   <Button variant="outline" size="sm" className="w-full justify-start">
                     <Shield className="h-4 w-4 mr-2" />
