@@ -118,17 +118,17 @@ const FilingsDashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading your filings...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading your filings...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen bg-background p-4">
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
@@ -138,7 +138,7 @@ const FilingsDashboard = () => {
                 Back to Home
               </Link>
             </Button>
-            <h1 className="text-3xl font-bold text-gray-900">My Filings</h1>
+            <h1 className="text-3xl font-bold text-foreground">My Filings</h1>
           </div>
           <Button asChild>
             <Link to="/filing/wizard">Start New Filing</Link>
@@ -146,9 +146,9 @@ const FilingsDashboard = () => {
         </div>
 
         {filings.length === 0 ? (
-          <Card className="text-center py-12">
+          <Card className="bg-background border-border text-center py-12">
             <CardHeader>
-              <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <FileText className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
               <CardTitle>No Filings Yet</CardTitle>
               <CardDescription>
                 Start your first IP filing to protect your ideas
@@ -163,7 +163,7 @@ const FilingsDashboard = () => {
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {filings.map((filing) => (
-              <Card key={filing.id} className="relative">
+              <Card key={filing.id} className="bg-background border-border relative">
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div>
@@ -187,7 +187,7 @@ const FilingsDashboard = () => {
                     </Badge>
                   </div>
                   
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-muted-foreground">
                     Filed: {new Date(filing.created_at).toLocaleDateString()}
                   </p>
 
@@ -219,7 +219,7 @@ const FilingsDashboard = () => {
                   )}
 
                   {filing.status === 'ready' && (!filing.documents || filing.documents.length === 0) && (
-                    <p className="text-sm text-gray-500 italic">
+                    <p className="text-sm text-muted-foreground italic">
                       Documents are being prepared...
                     </p>
                   )}
