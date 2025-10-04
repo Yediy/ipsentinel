@@ -173,7 +173,7 @@ const PatentReviewPanel = ({
             <div className="flex items-center space-x-2">
               <FileText className="h-8 w-8 text-primary" />
               <div>
-                <h1 className="text-2xl font-bold text-legal-dark">Patent Review</h1>
+                <h1 className="text-2xl font-bold">Patent Review & Editing</h1>
                 <p className="text-sm text-muted-foreground">Review and edit your AI-generated patent application</p>
               </div>
             </div>
@@ -190,11 +190,11 @@ const PatentReviewPanel = ({
           {/* Title Section */}
           <Card className="shadow-feature mb-8">
             <CardHeader>
-              <CardTitle className="text-center text-legal-dark">
+              <CardTitle className="text-center text-2xl">
                 {patentData.inventionTitle}
               </CardTitle>
-              <p className="text-center text-muted-foreground">
-                Utility Patent Application
+              <p className="text-center text-muted-foreground mt-2">
+                Utility Patent Application - USPTO Ready
               </p>
             </CardHeader>
           </Card>

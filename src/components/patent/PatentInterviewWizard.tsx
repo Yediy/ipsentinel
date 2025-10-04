@@ -249,15 +249,15 @@ const PatentInterviewWizard = ({ onComplete }: { onComplete: (data: PatentData) 
               {/* Question */}
               <div className="mb-8">
                 <div className="flex items-start space-x-4 mb-6">
-                  <div className="bg-primary/10 p-3 rounded-full">
+                  <div className="bg-primary/10 p-3 rounded-full flex-shrink-0">
                     <Bot className="h-6 w-6 text-primary" />
                   </div>
-                  <div className="flex-1">
-                    <h2 className="text-xl font-semibold text-legal-dark mb-2">
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-xl font-semibold mb-2">
                       {currentQuestion.question}
                     </h2>
                     {currentQuestion.followUp && (
-                      <p className="text-muted-foreground text-sm">
+                      <p className="text-muted-foreground text-sm leading-relaxed">
                         {currentQuestion.followUp}
                       </p>
                     )}

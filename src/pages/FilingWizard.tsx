@@ -385,10 +385,10 @@ const FilingWizard = () => {
           {step === 1 && wizardMode === 'select' && (
             <Card className="shadow-feature">
               <CardHeader>
-                <CardTitle className="text-2xl text-center text-legal-dark">
+                <CardTitle className="text-2xl text-center">
                   What type of IP protection do you need?
                 </CardTitle>
-                <p className="text-center text-muted-foreground">
+                <p className="text-center text-muted-foreground mt-2">
                   Choose the type that best describes what you want to protect
                 </p>
               </CardHeader>
@@ -407,13 +407,13 @@ const FilingWizard = () => {
                         onClick={() => updateFormData('creationType', type.id)}
                       >
                         <div className="flex items-start space-x-4">
-                          <div className="bg-primary/10 p-3 rounded-lg">
+                          <div className="bg-primary/10 p-3 rounded-lg flex-shrink-0">
                             <Icon className="h-6 w-6 text-primary" />
                           </div>
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-lg mb-2">{type.label}</h3>
-                            <p className="text-muted-foreground text-sm mb-3">{type.desc}</p>
-                            <p className="text-xs text-primary font-medium">{type.detailed}</p>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-lg mb-2 text-foreground">{type.label}</h3>
+                            <p className="text-muted-foreground text-sm mb-3 leading-relaxed">{type.desc}</p>
+                            <p className="text-xs text-primary font-medium leading-relaxed">{type.detailed}</p>
                           </div>
                         </div>
                       </div>
@@ -424,12 +424,12 @@ const FilingWizard = () => {
                 {formData.creationType === 'patent' && (
                   <div className="mt-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
                     <div className="flex items-start space-x-3">
-                      <Lightbulb className="h-5 w-5 text-primary mt-0.5" />
-                      <div>
-                        <h4 className="font-semibold text-primary mb-1">Patent Interview Process</h4>
-                        <p className="text-sm text-muted-foreground">
+                      <Lightbulb className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-primary mb-1">Patent (Utility) Interview Process</h4>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
                           You'll go through an AI-guided interview to capture all the details about your invention. 
-                          Our system will then generate a complete patent application including claims, abstract, 
+                          Our system will then generate a complete USPTO-compliant patent application including claims, abstract, 
                           and detailed description.
                         </p>
                       </div>
@@ -440,10 +440,10 @@ const FilingWizard = () => {
                 {formData.creationType === 'brand' && (
                   <div className="mt-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
                     <div className="flex items-start space-x-3">
-                      <Building className="h-5 w-5 text-primary mt-0.5" />
-                      <div>
+                      <Building className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
                         <h4 className="font-semibold text-primary mb-1">Trademark Interview Process</h4>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-muted-foreground leading-relaxed">
                           Our AI will guide you through trademark requirements, perform conflict searches, 
                           and generate your USPTO application with proper classifications.
                         </p>
@@ -455,10 +455,10 @@ const FilingWizard = () => {
                 {formData.creationType === 'creative' && (
                   <div className="mt-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
                     <div className="flex items-start space-x-3">
-                      <Palette className="h-5 w-5 text-primary mt-0.5" />
-                      <div>
+                      <Palette className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
                         <h4 className="font-semibold text-primary mb-1">Copyright Interview Process</h4>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-muted-foreground leading-relaxed">
                           We'll collect details about your creative work, help with classification, 
                           and prepare your copyright registration forms.
                         </p>
@@ -716,7 +716,7 @@ const FilingWizard = () => {
           {(step === 4 || wizardMode === 'payment') && (
             <Card className="shadow-feature">
               <CardHeader>
-                <CardTitle className="text-2xl text-center text-legal-dark">
+                <CardTitle className="text-2xl text-center">
                   {wizardMode === 'payment' && patentData ? 
                     `Choose Your Plan for "${patentData.inventionTitle}"` :
                    wizardMode === 'payment' && trademarkData ?
@@ -726,7 +726,7 @@ const FilingWizard = () => {
                     'Choose Your Protection Plan'
                   }
                 </CardTitle>
-                <p className="text-center text-muted-foreground">
+                <p className="text-center text-muted-foreground mt-2">
                   {wizardMode === 'payment' && patentData ?
                     'Your patent application is ready. Select a plan to proceed with filing.' :
                    wizardMode === 'payment' && trademarkData ?
@@ -740,16 +740,16 @@ const FilingWizard = () => {
               <CardContent className="p-8">
                 <div className="bg-primary/5 border border-primary/20 rounded-lg p-6 mb-6">
                   <div className="flex items-start space-x-4">
-                    <div className="bg-primary text-primary-foreground rounded-full p-2">
+                    <div className="bg-primary text-primary-foreground rounded-full p-2 flex-shrink-0">
                       <Shield className="h-6 w-6" />
                     </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-legal-dark mb-2">
-                        Recommended Protection: {formData.creationType === 'invention' ? 'Patent' : 
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg font-semibold mb-2">
+                        Recommended Protection: {formData.creationType === 'patent' ? 'Patent (Utility)' : 
                         formData.creationType === 'brand' ? 'Trademark' : 'Copyright'}
                       </h3>
-                      <p className="text-muted-foreground mb-4">
-                        {formData.creationType === 'invention' 
+                      <p className="text-muted-foreground mb-4 leading-relaxed">
+                        {formData.creationType === 'patent' || formData.creationType === 'invention'
                           ? 'Your invention qualifies for patent protection. This will give you exclusive rights to make, use, and sell your invention.'
                           : formData.creationType === 'brand'
                           ? 'Your brand name and logo should be protected with a trademark to prevent others from using similar marks in your industry.'
@@ -773,7 +773,7 @@ const FilingWizard = () => {
                     {plans.map((plan) => (
                       <div
                         key={plan.id}
-                        className={`relative border-2 rounded-lg p-4 cursor-pointer transition-all hover:shadow-card ${
+                        className={`relative border-2 rounded-lg p-6 cursor-pointer transition-all hover:shadow-card ${
                           selectedPlan === plan.id 
                             ? 'border-primary bg-primary/5' 
                             : 'border-border hover:border-primary/50'
@@ -786,22 +786,22 @@ const FilingWizard = () => {
                           </div>
                         )}
                         <div className="text-center mb-4">
-                          <h5 className="font-semibold text-lg">{plan.name}</h5>
-                          <div className="text-2xl font-bold text-primary">${plan.price}</div>
+                          <h5 className="font-semibold text-lg mb-1">{plan.name}</h5>
+                          <div className="text-3xl font-bold text-primary my-2">${plan.price}</div>
                           <p className="text-sm text-muted-foreground">{plan.description}</p>
                         </div>
                         <ul className="space-y-2 text-sm">
                           {plan.features.map((feature, index) => (
                             <li key={index} className="flex items-start gap-2">
                               <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                              <span>{feature}</span>
+                              <span className="leading-relaxed">{feature}</span>
                             </li>
                           ))}
                         </ul>
                         {selectedPlan === plan.id && (
                           <div className="absolute top-3 right-3">
-                            <div className="w-4 h-4 bg-primary rounded-full flex items-center justify-center">
-                              <div className="w-2 h-2 bg-white rounded-full"></div>
+                            <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+                              <Check className="w-3 h-3 text-primary-foreground" />
                             </div>
                           </div>
                         )}
@@ -810,25 +810,25 @@ const FilingWizard = () => {
                   </div>
                 </div>
 
-                <div className="border rounded-lg p-6 mb-6">
+                <div className="border rounded-lg p-6 mb-6 bg-card">
                   <h4 className="font-semibold text-lg mb-4">Selected Plan Summary</h4>
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span>{plans.find(p => p.id === selectedPlan)?.name}</span>
+                      <span className="text-muted-foreground">{plans.find(p => p.id === selectedPlan)?.name}</span>
                       <span className="font-semibold">${plans.find(p => p.id === selectedPlan)?.price}</span>
                     </div>
-                    <div className="border-t pt-2 flex justify-between text-lg font-bold">
+                    <div className="border-t pt-2 mt-2 flex justify-between text-lg font-bold">
                       <span>Total</span>
                       <span className="text-primary">${plans.find(p => p.id === selectedPlan)?.price}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-muted rounded-lg p-4 mb-6">
+                <div className="bg-muted/50 rounded-lg p-4 mb-6">
                   <h4 className="font-semibold mb-2">What's included in {plans.find(p => p.id === selectedPlan)?.name}:</h4>
-                  <ul className="text-sm space-y-1">
+                  <ul className="text-sm space-y-1 text-muted-foreground">
                     {plans.find(p => p.id === selectedPlan)?.features.map((feature, index) => (
-                      <li key={index}>• {feature}</li>
+                      <li key={index} className="leading-relaxed">• {feature}</li>
                     ))}
                   </ul>
                 </div>
