@@ -62,7 +62,7 @@ serve(async (req) => {
         .update({ 
           status: 'paid'
         })
-        .eq("stripe_session_id", session.id);
+        .eq("session_id", session.id);
 
       if (paymentError) {
         console.error("Error updating payment:", paymentError);

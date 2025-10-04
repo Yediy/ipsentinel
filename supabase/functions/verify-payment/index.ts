@@ -74,7 +74,7 @@ serve(async (req) => {
           contact_email
         )
       `)
-      .eq("stripe_session_id", session_id)
+      .eq("session_id", session_id)
       .single();
 
     if (paymentError) {
@@ -94,7 +94,7 @@ serve(async (req) => {
       await supabase
         .from("payments")
         .update({ status: paymentStatus })
-        .eq("stripe_session_id", session_id);
+        .eq("session_id", session_id);
     }
 
     return new Response(JSON.stringify({
