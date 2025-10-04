@@ -118,7 +118,7 @@ export const InternationalDashboard: React.FC = () => {
       <div className="space-y-6">
         <div className="grid md:grid-cols-4 gap-6">
           {[...Array(4)].map((_, i) => (
-            <Card key={i}>
+            <Card key={i} className="bg-background border-border">
               <CardContent className="p-6">
                 <div className="animate-pulse">
                   <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
@@ -156,7 +156,7 @@ export const InternationalDashboard: React.FC = () => {
 
       {/* Stats Cards */}
       <div className="grid md:grid-cols-4 gap-6">
-        <Card>
+        <Card className="bg-background border-border">
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
               <div className="bg-primary/10 rounded-full p-3">
@@ -170,7 +170,7 @@ export const InternationalDashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-background border-border">
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
               <div className="bg-warning/10 rounded-full p-3">
@@ -184,7 +184,7 @@ export const InternationalDashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-background border-border">
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
               <div className="bg-success/10 rounded-full p-3">
@@ -198,7 +198,7 @@ export const InternationalDashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-background border-border">
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
               <div className="bg-destructive/10 rounded-full p-3">
@@ -215,7 +215,7 @@ export const InternationalDashboard: React.FC = () => {
 
       <div className="grid lg:grid-cols-2 gap-8">
         {/* Recent Filings */}
-        <Card>
+        <Card className="bg-background border-border">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
@@ -261,7 +261,7 @@ export const InternationalDashboard: React.FC = () => {
         </Card>
 
         {/* Deadline Manager */}
-        <Card>
+        <Card className="bg-background border-border">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
