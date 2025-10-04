@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Bell, CheckCircle, Clock, Info, AlertCircle } from "lucide-react";
+import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { SectionCard } from "@/components/dashboard/SectionCard";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Bell, CheckCircle, Info, AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface Notification {
@@ -93,9 +95,9 @@ const Notifications = () => {
   const getIcon = (type: string) => {
     switch (type) {
       case 'success':
-        return <CheckCircle className="h-5 w-5 text-success" />;
+        return <CheckCircle className="h-5 w-5 text-green-500" />;
       case 'warning':
-        return <AlertCircle className="h-5 w-5 text-warning" />;
+        return <AlertCircle className="h-5 w-5 text-yellow-500" />;
       case 'error':
         return <AlertCircle className="h-5 w-5 text-destructive" />;
       default:
@@ -105,85 +107,85 @@ const Notifications = () => {
 
   if (loading) {
     return (
-      <div className="container max-w-4xl mx-auto py-8">
-        <Skeleton className="h-12 w-64 mb-8" />
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-24" />
-          ))}
+      <DashboardLayout>
+        <div className="space-y-6">
+          <Skeleton className="h-12 w-64" />
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-24" />
+            ))}
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="container max-w-4xl mx-auto py-8">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Bell className="h-8 w-8 text-primary" />
-            Notifications
-          </h1>
-          <p className="text-muted-foreground">
-            Stay updated with your filing activity
-          </p>
-        </div>
-        {notifications.some(n => !n.read) && (
-          <Button onClick={markAllAsRead} variant="outline">
-            Mark all as read
-          </Button>
-        )}
-      </div>
-
-      {notifications.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Bell className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">No notifications yet</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {notifications.map((notification) => (
-            <Card 
-              key={notification.id}
-              className={notification.read ? 'opacity-60' : ''}
-            >
-              <CardContent className="pt-6">
-                <div className="flex items-start gap-4">
-                  {getIcon(notification.type)}
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="font-semibold">{notification.title}</h3>
-                      {!notification.read && (
-                        <Badge variant="default">New</Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      {notification.message}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(notification.created_at).toLocaleDateString()}
+    <DashboardLayout>
+      <SectionCard
+        title="Notifications"
+        description="Stay updated with your filing activity"
+        actions={
+          notifications.some(n => !n.read) && (
+            <Button onClick={markAllAsRead} variant="outline" size="sm">
+              Mark all as read
+            </Button>
+          )
+        }
+      >
+        {notifications.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
+              <Bell className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <h3 className="text-sm font-semibold">No notifications yet</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              When something changes or requires your attention, you'll see it here.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {notifications.map((notification) => (
+              <Card 
+                key={notification.id}
+                className={notification.read ? 'opacity-60' : ''}
+              >
+                <CardContent className="pt-6">
+                  <div className="flex items-start gap-4">
+                    {getIcon(notification.type)}
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 className="font-semibold">{notification.title}</h3>
+                        {!notification.read && (
+                          <Badge variant="default">New</Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        {notification.message}
                       </p>
-                      {!notification.read && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => markAsRead(notification.id)}
-                        >
-                          Mark as read
-                        </Button>
-                      )}
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(notification.created_at).toLocaleDateString()}
+                        </p>
+                        {!notification.read && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => markAsRead(notification.id)}
+                          >
+                            Mark as read
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+    </DashboardLayout>
   );
 };
 

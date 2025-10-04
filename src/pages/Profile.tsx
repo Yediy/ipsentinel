@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { SectionCard } from "@/components/dashboard/SectionCard";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { User } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const Profile = () => {
@@ -81,30 +81,22 @@ const Profile = () => {
 
   if (loading) {
     return (
-      <div className="container max-w-2xl mx-auto py-8">
-        <Skeleton className="h-12 w-48 mb-8" />
-        <Skeleton className="h-64" />
-      </div>
+      <DashboardLayout>
+        <div className="space-y-6">
+          <Skeleton className="h-12 w-48" />
+          <Skeleton className="h-64" />
+        </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="container max-w-2xl mx-auto py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <User className="h-8 w-8 text-primary" />
-          Profile
-        </h1>
-        <p className="text-muted-foreground">
-          Manage your account information
-        </p>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Personal Information</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+    <DashboardLayout>
+      <SectionCard
+        title="Profile"
+        description="Manage your account information"
+      >
+        <form className="space-y-6 max-w-xl" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -130,12 +122,14 @@ const Profile = () => {
             />
           </div>
 
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Save Changes'}
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
+          <div className="flex justify-end">
+            <Button type="submit" disabled={saving}>
+              {saving ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
+        </form>
+      </SectionCard>
+    </DashboardLayout>
   );
 };
 
