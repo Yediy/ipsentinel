@@ -81,7 +81,7 @@ export function AppSidebar() {
           .select('role')
           .eq('user_id', session.user.id)
           .eq('role', 'admin')
-          .single();
+          .maybeSingle();
         
         setIsAdmin(!!roleData);
       }

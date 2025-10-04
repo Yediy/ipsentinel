@@ -29,6 +29,10 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminSettings from "./pages/AdminSettings";
 import PriorArtSearch from "./pages/PriorArtSearch";
 import TrademarkStatus from "./pages/TrademarkStatus";
+import Analytics from "./pages/Analytics";
+import Profile from "./pages/Profile";
+import Notifications from "./pages/Notifications";
+import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient();
 
@@ -137,6 +141,66 @@ const App = () => (
                       <AppSidebar />
                       <main className="flex-1 p-6 bg-background">
                         <CostCalculator />
+                      </main>
+                    </div>
+                  </SidebarProvider>
+                </LegalConsentGate>
+              </AuthGuard>
+            } />
+
+            <Route path="/analytics" element={
+              <AuthGuard>
+                <LegalConsentGate>
+                  <SidebarProvider>
+                    <div className="flex min-h-screen w-full">
+                      <AppSidebar />
+                      <main className="flex-1 p-6 bg-background">
+                        <Analytics />
+                      </main>
+                    </div>
+                  </SidebarProvider>
+                </LegalConsentGate>
+              </AuthGuard>
+            } />
+
+            <Route path="/profile" element={
+              <AuthGuard>
+                <LegalConsentGate>
+                  <SidebarProvider>
+                    <div className="flex min-h-screen w-full">
+                      <AppSidebar />
+                      <main className="flex-1 p-6 bg-background">
+                        <Profile />
+                      </main>
+                    </div>
+                  </SidebarProvider>
+                </LegalConsentGate>
+              </AuthGuard>
+            } />
+
+            <Route path="/notifications" element={
+              <AuthGuard>
+                <LegalConsentGate>
+                  <SidebarProvider>
+                    <div className="flex min-h-screen w-full">
+                      <AppSidebar />
+                      <main className="flex-1 p-6 bg-background">
+                        <Notifications />
+                      </main>
+                    </div>
+                  </SidebarProvider>
+                </LegalConsentGate>
+              </AuthGuard>
+            } />
+
+            <Route path="/settings" element={
+              <AuthGuard>
+                <LegalConsentGate>
+                  <SidebarProvider>
+                    <div className="flex min-h-screen w-full">
+                      <AppSidebar />
+                      <main className="flex-1 p-6 bg-background">
+                        <Settings />
                       </main>
                     </div>
                   </SidebarProvider>
