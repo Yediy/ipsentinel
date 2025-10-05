@@ -1,11 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.2';
 import { createSecureResponse } from '../_shared/security-headers.ts';
 import { handleError, createAuthError, createValidationError } from '../_shared/error-handler.ts';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { getValidatedCorsHeaders, createCorsPreflightResponse } from '../_shared/cors-validator.ts';
 
 interface RoleRequest {
   action: 'add' | 'remove';
@@ -14,9 +10,11 @@ interface RoleRequest {
 }
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get('origin');
+  
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return createCorsPreflightResponse(origin);
   }
 
   try {
@@ -133,7 +131,7 @@ Deno.serve(async (req) => {
       role: body.role,
       userId: body.userId,
       result,
-    });
+    }, 200, getValidatedCorsHeaders(origin));
   } catch (error) {
     console.error('Role management error:', error);
     return handleError(error);
