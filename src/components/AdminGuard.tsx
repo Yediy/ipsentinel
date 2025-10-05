@@ -22,13 +22,14 @@ export function AdminGuard({ children }: AdminGuardProps) {
           return;
         }
 
-        // Check if user has admin role
+        // Check if user has admin role using RPC
         const { data, error } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', session.user.id)
-          .eq('role', 'admin')
-          .maybeSingle();
+          .rpc('has_role', { 
+            _user_id: session.user.id, 
+            _role: 'admin' 
+          });
+
+        console.info('[AdminGuard] Admin check result:', data);
 
         if (error || !data) {
           toast({

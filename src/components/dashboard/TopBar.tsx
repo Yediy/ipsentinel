@@ -1,10 +1,28 @@
-import { UserCircle } from 'lucide-react';
+import { UserCircle, Shield } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { useState, useEffect } from 'react';
 
 export function TopBar() {
   const navigate = useNavigate();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data } = await supabase
+          .rpc('has_role', { 
+            _user_id: session.user.id, 
+            _role: 'admin' 
+          });
+        console.info('[TopBar] Admin check result:', data);
+        setIsAdmin(!!data);
+      }
+    };
+    checkAdmin();
+  }, []);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -25,6 +43,17 @@ export function TopBar() {
         </div>
 
         <div className="flex items-center gap-4">
+          {isAdmin && (
+            <Button
+              variant="default"
+              size="sm"
+              className="bg-red-600 hover:bg-red-700 text-white border-2 border-red-400 animate-pulse font-semibold"
+              onClick={() => navigate('/admin')}
+            >
+              <Shield className="h-4 w-4 mr-2" />
+              Admin
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"

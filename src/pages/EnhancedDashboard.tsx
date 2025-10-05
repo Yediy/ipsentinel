@@ -63,13 +63,13 @@ const EnhancedDashboard = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      // Check admin status
+      // Check admin status using RPC
       const { data: adminData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', session.user.id)
-        .eq('role', 'admin')
-        .maybeSingle();
+        .rpc('has_role', { 
+          _user_id: session.user.id, 
+          _role: 'admin' 
+        });
+      console.info('[EnhancedDashboard] Admin check result:', adminData);
       setIsAdmin(!!adminData);
 
       // Load filings

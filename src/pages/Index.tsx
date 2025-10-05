@@ -19,14 +19,14 @@ const Index = () => {
       const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user || null);
       
-      // Check admin status
+      // Check admin status using RPC
       if (session?.user) {
         const { data } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', session.user.id)
-          .eq('role', 'admin')
-          .maybeSingle();
+          .rpc('has_role', { 
+            _user_id: session.user.id, 
+            _role: 'admin' 
+          });
+        console.info('[Index] Admin check result:', data);
         setIsAdmin(!!data);
       }
       
@@ -41,11 +41,11 @@ const Index = () => {
       
       if (session?.user) {
         const { data } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', session.user.id)
-          .eq('role', 'admin')
-          .maybeSingle();
+          .rpc('has_role', { 
+            _user_id: session.user.id, 
+            _role: 'admin' 
+          });
+        console.info('[Index authStateChange] Admin check result:', data);
         setIsAdmin(!!data);
       } else {
         setIsAdmin(false);
