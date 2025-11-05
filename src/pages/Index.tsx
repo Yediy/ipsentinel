@@ -213,7 +213,7 @@ const Index = () => {
                 </div>
                 <h3 className="text-xl font-semibold mb-2">Expert Review</h3>
                 <p className="text-muted-foreground">
-                  All applications are reviewed by licensed patent attorneys before filing with the USPTO.
+                  All applications are reviewed by licensed patent attorneys before filing with the USPTO. <span className="text-sm italic">If requested, will prolong filing by 24-48 hours.</span>
                 </p>
               </CardContent>
             </Card>
