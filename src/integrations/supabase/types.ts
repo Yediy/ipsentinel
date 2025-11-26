@@ -947,10 +947,7 @@ export type Database = {
         Args: { filing_id: string }
         Returns: undefined
       }
-      extract_filing_id_from_path: {
-        Args: { path: string }
-        Returns: string
-      }
+      extract_filing_id_from_path: { Args: { path: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -958,10 +955,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      is_admin: { Args: never; Returns: boolean }
       refresh_upcoming_deadlines: {
         Args: { _filing_id?: string }
         Returns: undefined
