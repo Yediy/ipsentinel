@@ -8,13 +8,10 @@ import {
   Users, 
   FileText, 
   Clock, 
-  DollarSign, 
-  TrendingUp,
-  AlertCircle,
   CheckCircle,
-  BarChart3,
   Calendar,
-  Settings
+  Settings,
+  Shield
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +19,7 @@ import { toast } from "sonner";
 import { AdminBanner } from "@/components/admin/AdminBanner";
 import { UserManagement } from "@/components/admin/UserManagement";
 import { SystemHealth } from "@/components/admin/SystemHealth";
+import { SecurityDashboard } from "@/components/admin/SecurityDashboard";
 
 interface DashboardStats {
   totalFilings: number;
@@ -230,6 +228,10 @@ const AdminDashboard = () => {
           <TabsTrigger value="filings">Recent Filings</TabsTrigger>
           <TabsTrigger value="users">User Management</TabsTrigger>
           <TabsTrigger value="deadlines">Upcoming Deadlines</TabsTrigger>
+          <TabsTrigger value="security" className="flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            Security
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="filings">
@@ -325,6 +327,10 @@ const AdminDashboard = () => {
               </Table>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="security">
+          <SecurityDashboard />
         </TabsContent>
       </Tabs>
     </div>

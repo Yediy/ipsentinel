@@ -917,6 +917,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_preferences: {
+        Row: {
+          created_at: string
+          deadline_reminders: boolean
+          email_notifications: boolean
+          filing_status_updates: boolean
+          id: string
+          push_notifications: boolean
+          reminder_days_before: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deadline_reminders?: boolean
+          email_notifications?: boolean
+          filing_status_updates?: boolean
+          id?: string
+          push_notifications?: boolean
+          reminder_days_before?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deadline_reminders?: boolean
+          email_notifications?: boolean
+          filing_status_updates?: boolean
+          id?: string
+          push_notifications?: boolean
+          reminder_days_before?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null

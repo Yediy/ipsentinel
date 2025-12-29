@@ -1,89 +1,55 @@
-import { useState } from "react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { SectionCard } from "@/components/dashboard/SectionCard";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ProfileSettings } from "@/components/settings/ProfileSettings";
+import { NotificationSettings } from "@/components/settings/NotificationSettings";
+import { SecuritySettings } from "@/components/settings/SecuritySettings";
+import { PrivacySettings } from "@/components/settings/PrivacySettings";
+import { User, Bell, Shield, Lock } from "lucide-react";
 
 const Settings = () => {
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [pushNotifications, setPushNotifications] = useState(false);
-  const [deadlineReminders, setDeadlineReminders] = useState(true);
-
   return (
     <DashboardLayout>
       <SectionCard
         title="Settings"
-        description="Manage your application preferences"
+        description="Manage your account preferences and security"
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Notifications Group */}
-          <div className="space-y-4">
-            <h4 className="text-sm font-semibold">Notifications</h4>
-            <div className="rounded-lg border border-border p-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="email-notifications" className="flex flex-col gap-1">
-                  <span>Email Notifications</span>
-                  <span className="font-normal text-sm text-muted-foreground">
-                    Receive updates via email
-                  </span>
-                </Label>
-                <Switch
-                  id="email-notifications"
-                  checked={emailNotifications}
-                  onCheckedChange={setEmailNotifications}
-                />
-              </div>
+        <Tabs defaultValue="profile" className="w-full">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
+            <TabsTrigger value="profile" className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              <span className="hidden sm:inline">Profile</span>
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="flex items-center gap-2">
+              <Bell className="h-4 w-4" />
+              <span className="hidden sm:inline">Notifications</span>
+            </TabsTrigger>
+            <TabsTrigger value="security" className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              <span className="hidden sm:inline">Security</span>
+            </TabsTrigger>
+            <TabsTrigger value="privacy" className="flex items-center gap-2">
+              <Lock className="h-4 w-4" />
+              <span className="hidden sm:inline">Privacy</span>
+            </TabsTrigger>
+          </TabsList>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="push-notifications" className="flex flex-col gap-1">
-                  <span>Push Notifications</span>
-                  <span className="font-normal text-sm text-muted-foreground">
-                    Get browser notifications
-                  </span>
-                </Label>
-                <Switch
-                  id="push-notifications"
-                  checked={pushNotifications}
-                  onCheckedChange={setPushNotifications}
-                />
-              </div>
+          <TabsContent value="profile">
+            <ProfileSettings />
+          </TabsContent>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="deadline-reminders" className="flex flex-col gap-1">
-                  <span>Deadline Reminders</span>
-                  <span className="font-normal text-sm text-muted-foreground">
-                    Get notified about upcoming deadlines
-                  </span>
-                </Label>
-                <Switch
-                  id="deadline-reminders"
-                  checked={deadlineReminders}
-                  onCheckedChange={setDeadlineReminders}
-                />
-              </div>
-            </div>
-          </div>
+          <TabsContent value="notifications">
+            <NotificationSettings />
+          </TabsContent>
 
-          {/* Privacy & Security Group */}
-          <div className="space-y-4">
-            <h4 className="text-sm font-semibold">Privacy & Security</h4>
-            <div className="rounded-lg border border-border p-4 space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Manage your account security settings
-              </p>
-              <p className="text-xs text-muted-foreground">
-                For advanced security settings (MFA, password policies), please contact support or visit your Supabase dashboard.
-              </p>
-            </div>
+          <TabsContent value="security">
+            <SecuritySettings />
+          </TabsContent>
 
-            <h4 className="text-sm font-semibold">Email Preferences</h4>
-            <div className="rounded-lg border border-border p-4">
-              <p className="text-sm text-muted-foreground">
-                You will receive important account and filing-related emails.
-              </p>
-            </div>
-          </div>
-        </div>
+          <TabsContent value="privacy">
+            <PrivacySettings />
+          </TabsContent>
+        </Tabs>
       </SectionCard>
     </DashboardLayout>
   );
