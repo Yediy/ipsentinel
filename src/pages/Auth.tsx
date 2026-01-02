@@ -9,6 +9,7 @@ import { Shield, Mail, Lock, User, Building } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ensureProfile } from "@/lib/auth-utils";
+import { logLogin, logSignup } from "@/lib/audit-logger";
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -36,6 +37,12 @@ const Auth = () => {
         setTimeout(() => {
           ensureProfile().catch(console.error);
         }, 0);
+        
+        // Log security event based on auth event type
+        if (event === 'SIGNED_IN') {
+          logLogin().catch(console.error);
+        }
+        
         navigate('/dashboard');
       }
     });
@@ -80,6 +87,7 @@ const Auth = () => {
         // Ensure profile exists after successful signup (belt & suspenders)
         setTimeout(() => {
           ensureProfile().catch(console.error);
+          logSignup().catch(console.error);
         }, 0);
         
         toast({
