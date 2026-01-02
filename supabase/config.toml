@@ -14,3 +14,6 @@ verify_jwt = true
 
 [functions.audit-log]
 verify_jwt = true
+
+[functions.deadline-reminder]
+verify_jwt = false
