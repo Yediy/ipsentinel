@@ -37,11 +37,16 @@ serve(async (req) => {
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnon = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
     const supabase = createClient(supabaseUrl, supabaseAnon, {
       global: {
         headers: { Authorization: `Bearer ${jwt}` }
       }
     });
+    
+    // Service client for reading user preferences (bypasses RLS)
+    const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
 
     console.log('Running deadline reminder job...');
 
@@ -77,6 +82,7 @@ serve(async (req) => {
     console.log(`Found ${upcomingDeadlines?.length || 0} upcoming deadlines`);
 
     let emailsSent = 0;
+    let skippedDueToPrefs = 0;
 
     for (const deadline of upcomingDeadlines || []) {
       const filing = deadline.filings as any;
@@ -87,6 +93,31 @@ serve(async (req) => {
       
       if (!recipientEmail) {
         console.log(`No email for filing ${filing.id}, skipping`);
+        continue;
+      }
+
+      // Check user preferences for deadline reminders
+      const { data: preferences } = await serviceClient
+        .from('user_preferences')
+        .select('email_notifications, deadline_reminders, reminder_days_before')
+        .eq('user_id', filing.user_id)
+        .maybeSingle();
+
+      // Default preferences if not set
+      const emailNotifications = preferences?.email_notifications ?? true;
+      const deadlineReminders = preferences?.deadline_reminders ?? true;
+      const reminderDaysBefore = preferences?.reminder_days_before ?? 7;
+
+      // Skip if user has disabled email notifications or deadline reminders
+      if (!emailNotifications || !deadlineReminders) {
+        console.log(`User ${filing.user_id} has disabled deadline reminders, skipping`);
+        skippedDueToPrefs++;
+        continue;
+      }
+
+      // Skip if deadline is further out than user's reminder preference
+      if (daysUntilDue > reminderDaysBefore) {
+        console.log(`Deadline ${deadline.id} is ${daysUntilDue} days out, user preference is ${reminderDaysBefore} days, skipping`);
         continue;
       }
 
@@ -109,7 +140,7 @@ serve(async (req) => {
         
         <hr>
         <p style="font-size: 12px; color: #666;">
-          This is an automated reminder. Please log into your IPGenie dashboard for more details.
+          This is an automated reminder. You can manage your notification preferences in the Settings page.
         </p>
       `;
 
@@ -128,20 +159,20 @@ serve(async (req) => {
         if (emailError) {
           console.error(`Failed to send email for deadline ${deadline.id}:`, emailError);
           
-          // Log to audit using secure function
-          await supabase.rpc('audit_log_append', {
-            p_user_id: filing.user_id,
-            p_action: 'deadline_email_error',
-            p_subject_type: 'deadline',
-            p_subject_id: deadline.id,
-            p_metadata: {
-              to: recipientEmail,
-              error: emailError.message || String(emailError),
-              deadline_label: deadline.label
-            },
-            p_ip: null,
-            p_ua: null
-          });
+          // Log to audit log
+          await serviceClient
+            .from('audit_log')
+            .insert({
+              user_id: filing.user_id,
+              action: 'deadline_email_error',
+              subject_type: 'deadline',
+              subject_id: deadline.id,
+              metadata: {
+                to: recipientEmail,
+                error: emailError.message || String(emailError),
+                deadline_label: deadline.label
+              }
+            });
         } else {
           emailsSent++;
           console.log(`Reminder sent for deadline ${deadline.id} to ${recipientEmail}`);
@@ -149,29 +180,30 @@ serve(async (req) => {
       } catch (emailError: any) {
         console.error(`Error sending email for deadline ${deadline.id}:`, emailError);
         
-        // Log exception using secure function
-        await supabase.rpc('audit_log_append', {
-          p_user_id: filing.user_id,
-          p_action: 'deadline_email_exception',
-          p_subject_type: 'deadline',
-          p_subject_id: deadline.id,
-          p_metadata: {
-            to: recipientEmail,
-            error: emailError.message || String(emailError)
-          },
-          p_ip: null,
-          p_ua: null
-        }).catch(err => console.error('Failed to log audit:', err));
+        // Log exception
+        await serviceClient
+          .from('audit_log')
+          .insert({
+            user_id: filing.user_id,
+            action: 'deadline_email_exception',
+            subject_type: 'deadline',
+            subject_id: deadline.id,
+            metadata: {
+              to: recipientEmail,
+              error: emailError.message || String(emailError)
+            }
+          }).catch(err => console.error('Failed to log audit:', err));
       }
     }
 
-    console.log(`Deadline reminder job completed. Processed ${emailsSent} reminders.`);
+    console.log(`Deadline reminder job completed. Sent ${emailsSent}, skipped ${skippedDueToPrefs} due to preferences.`);
 
     return createSecureResponse({
       success: true,
       message: `Processed ${emailsSent} deadline reminders`,
       deadlines_found: upcomingDeadlines?.length || 0,
-      emails_sent: emailsSent
+      emails_sent: emailsSent,
+      skipped_due_to_preferences: skippedDueToPrefs
     });
 
   } catch (error: any) {

@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Shield, Key, AlertTriangle, CheckCircle, ExternalLink } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { logPasswordChange } from '@/lib/audit-logger';
 
 export function SecuritySettings() {
   const [changingPassword, setChangingPassword] = useState(false);
@@ -36,6 +37,10 @@ export function SecuritySettings() {
       }
 
       toast.success('Password updated successfully');
+      
+      // Log password change for security audit
+      logPasswordChange().catch(console.error);
+      
       setNewPassword('');
       setConfirmPassword('');
       setChangingPassword(false);

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { logFilingView } from '@/lib/audit-logger';
 
 interface Filing {
   id: string;
@@ -192,6 +193,9 @@ export const useFilingDetails = (filingId: string | null) => {
       setFiling(filingData);
       setDocuments(documents || []);
       setDeadlines(deadlinesData || []);
+      
+      // Log filing view for security audit
+      logFilingView(filingId, filingData?.title).catch(console.error);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch filing details';
       setError(errorMessage);
