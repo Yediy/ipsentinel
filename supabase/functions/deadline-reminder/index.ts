@@ -17,35 +17,17 @@ function getCorsHeaders(origin: string | null) {
   };
 }
 
-function requireAuth(req: Request): string {
-  const auth = req.headers.get("authorization") || "";
-  if (!auth.toLowerCase().startsWith("bearer ")) {
-    throw new Response(JSON.stringify({ error: "AuthRequired" }), { status: 401 });
-  }
-  return auth.slice(7).trim();
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return handleCorsPreFlight();
   }
 
   try {
-    // Require authentication
-    const jwt = requireAuth(req);
-
-    // Initialize Supabase client
+    // Initialize Supabase client with service role for cron job access
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnon = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
-    const supabase = createClient(supabaseUrl, supabaseAnon, {
-      global: {
-        headers: { Authorization: `Bearer ${jwt}` }
-      }
-    });
-    
-    // Service client for reading user preferences (bypasses RLS)
+    // Service client for all operations (bypasses RLS)
     const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
 
     console.log('Running deadline reminder job...');
@@ -54,7 +36,8 @@ serve(async (req) => {
     const thirtyDaysFromNow = new Date();
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
     
-    const { data: upcomingDeadlines, error: deadlineError } = await supabase
+    // Use service client to fetch all deadlines
+    const { data: upcomingDeadlines, error: deadlineError } = await serviceClient
       .from('deadlines')
       .select(`
         id,
@@ -145,8 +128,8 @@ serve(async (req) => {
       `;
 
       try {
-        // Use the email-sender function
-        const { error: emailError } = await supabase.functions.invoke('email-sender', {
+        // Use the email-sender function via service client
+        const { error: emailError } = await serviceClient.functions.invoke('email-sender', {
           body: {
             to: recipientEmail,
             subject: `Deadline Reminder: ${deadline.label} (${daysUntilDue} days remaining)`,
@@ -176,6 +159,21 @@ serve(async (req) => {
         } else {
           emailsSent++;
           console.log(`Reminder sent for deadline ${deadline.id} to ${recipientEmail}`);
+          
+          // Log successful send
+          await serviceClient
+            .from('audit_log')
+            .insert({
+              user_id: filing.user_id,
+              action: 'deadline_email_sent',
+              subject_type: 'deadline',
+              subject_id: deadline.id,
+              metadata: {
+                to: recipientEmail,
+                deadline_label: deadline.label,
+                days_until_due: daysUntilDue
+              }
+            });
         }
       } catch (emailError: any) {
         console.error(`Error sending email for deadline ${deadline.id}:`, emailError);

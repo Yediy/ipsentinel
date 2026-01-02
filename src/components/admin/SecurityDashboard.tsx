@@ -5,12 +5,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { supabase } from '@/integrations/supabase/client';
 import { format, subDays } from 'date-fns';
 import { 
   Shield, 
   ShieldCheck, 
-  ShieldAlert, 
   Database, 
   FileText, 
   Lock, 
@@ -18,9 +19,12 @@ import {
   Activity,
   Clock,
   RefreshCw,
-  HardDrive
+  HardDrive,
+  Download,
+  CalendarIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface AuditLogEntry {
   id: number;
@@ -39,6 +43,11 @@ interface SecurityMetrics {
   totalEvents7d: number;
   totalEvents30d: number;
   actionBreakdown: Record<string, number>;
+}
+
+interface DateRange {
+  from: Date | undefined;
+  to: Date | undefined;
 }
 
 // Tables with RLS enabled (based on project configuration)
@@ -85,14 +94,28 @@ export function SecurityDashboard() {
   const [loading, setLoading] = useState(true);
   const [actionFilter, setActionFilter] = useState<string>('all');
   const [refreshing, setRefreshing] = useState(false);
+  const [dateRange, setDateRange] = useState<DateRange>({ from: undefined, to: undefined });
+  const [exporting, setExporting] = useState(false);
 
   const fetchAuditLogs = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('audit_log')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(200);
+
+      // Apply date range filter
+      if (dateRange.from) {
+        query = query.gte('created_at', dateRange.from.toISOString());
+      }
+      if (dateRange.to) {
+        const endOfDay = new Date(dateRange.to);
+        endOfDay.setHours(23, 59, 59, 999);
+        query = query.lte('created_at', endOfDay.toISOString());
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching audit logs:', error);
@@ -129,6 +152,50 @@ export function SecurityDashboard() {
     });
   };
 
+  const exportToCSV = async () => {
+    setExporting(true);
+    try {
+      const headers = ['ID', 'Timestamp', 'Action', 'User ID', 'Subject Type', 'Subject ID', 'IP Address', 'User Agent', 'Metadata'];
+      const rows = filteredLogs.map(log => [
+        log.id,
+        log.created_at,
+        log.action,
+        log.user_id || '',
+        log.subject_type || '',
+        log.subject_id || '',
+        log.ip || '',
+        log.user_agent || '',
+        log.metadata ? JSON.stringify(log.metadata) : ''
+      ]);
+
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `audit-log-${format(new Date(), 'yyyy-MM-dd-HHmmss')}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast.success(`Exported ${filteredLogs.length} records to CSV`);
+    } catch (err) {
+      console.error('Export error:', err);
+      toast.error('Failed to export audit logs');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const clearDateFilter = () => {
+    setDateRange({ from: undefined, to: undefined });
+  };
+
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
@@ -137,6 +204,10 @@ export function SecurityDashboard() {
     };
     loadData();
   }, []);
+
+  useEffect(() => {
+    fetchAuditLogs();
+  }, [dateRange]);
 
   useEffect(() => {
     calculateMetrics(auditLogs);
@@ -278,12 +349,30 @@ export function SecurityDashboard() {
       {/* Audit Log */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Audit Log
-            </CardTitle>
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Audit Log
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportToCSV}
+                  disabled={exporting || filteredLogs.length === 0}
+                >
+                  <Download className={`h-4 w-4 mr-1 ${exporting ? 'animate-pulse' : ''}`} />
+                  Export CSV
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
+                  <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+            </div>
+            
+            {/* Filters Row */}
+            <div className="flex flex-wrap items-center gap-2">
               <Select value={actionFilter} onValueChange={setActionFilter}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Filter by action" />
@@ -297,9 +386,52 @@ export function SecurityDashboard() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
-                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-              </Button>
+
+              {/* Date Range Filter */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-[240px] justify-start text-left font-normal",
+                      !dateRange.from && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateRange.from ? (
+                      dateRange.to ? (
+                        <>
+                          {format(dateRange.from, "LLL dd")} - {format(dateRange.to, "LLL dd")}
+                        </>
+                      ) : (
+                        format(dateRange.from, "LLL dd, yyyy")
+                      )
+                    ) : (
+                      <span>Pick a date range</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={dateRange.from}
+                    selected={{ from: dateRange.from, to: dateRange.to }}
+                    onSelect={(range) => setDateRange({ from: range?.from, to: range?.to })}
+                    numberOfMonths={2}
+                  />
+                </PopoverContent>
+              </Popover>
+
+              {(dateRange.from || dateRange.to) && (
+                <Button variant="ghost" size="sm" onClick={clearDateFilter}>
+                  Clear dates
+                </Button>
+              )}
+
+              <span className="text-sm text-muted-foreground ml-auto">
+                Showing {filteredLogs.length} records
+              </span>
             </div>
           </div>
         </CardHeader>
