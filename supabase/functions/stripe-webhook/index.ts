@@ -1,198 +1,128 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@14.21.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { getValidatedCorsHeaders, createCorsPreflightResponse } from "../_shared/cors-validator.ts";
+// supabase/functions/stripe-webhook/index.ts
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import Stripe from "https://esm.sh/stripe@14.23.0?target=deno";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
-serve(async (req) => {
-  const origin = req.headers.get("origin");
-  const corsHeaders = getValidatedCorsHeaders(origin);
-  
-  // Handle CORS preflight requests
+const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
+const STRIPE_WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE")!;
+const CORS_ORIGINS = (Deno.env.get("CORS_ORIGINS") ?? "").split(",").map(s => s.trim()).filter(Boolean);
+
+const stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2024-11-20.acacia" });
+
+function cors(resp: Response, req: Request) {
+  const origin = req.headers.get("origin") ?? "";
+  const allow = CORS_ORIGINS.includes(origin) ? origin : "";
+  const hdrs = new Headers(resp.headers);
+  if (allow) {
+    hdrs.set("access-control-allow-origin", allow);
+    hdrs.set("vary", "origin");
+  }
+  return new Response(resp.body, { status: resp.status, headers: hdrs });
+}
+
+serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return createCorsPreflightResponse(origin);
+    return cors(
+      new Response(null, {
+        status: 204,
+        headers: {
+          "access-control-allow-methods": "POST,OPTIONS",
+          "access-control-allow-headers": "content-type, stripe-signature",
+          "access-control-max-age": "86400"
+        }
+      }),
+      req
+    );
   }
 
   try {
-    console.log("Stripe webhook called");
+    const rawBody = await req.text();
+    const signature = req.headers.get("stripe-signature") ?? "";
+    let event: Stripe.Event;
 
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-      apiVersion: "2023-10-16",
-    });
-
-    const signature = req.headers.get("stripe-signature");
-    const body = await req.text();
-    const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
-
-    if (!signature || !webhookSecret) {
-      console.error("Missing signature or webhook secret");
-      return new Response("Webhook signature verification failed", { status: 400 });
-    }
-
-    // Verify webhook signature
-    let event;
     try {
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-    } catch (err: any) {
-      console.error("Webhook signature verification failed:", err?.message);
-      return new Response(`Webhook Error: ${err?.message}`, { status: 400 });
+      event = stripe.webhooks.constructEvent(rawBody, signature, STRIPE_WEBHOOK_SECRET);
+    } catch (_err) {
+      return cors(
+        new Response(JSON.stringify({ ok: false, error: "invalid_signature" }), { status: 400 }),
+        req
+      );
     }
 
-    console.log("Webhook event type:", event.type);
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE, { auth: { persistSession: false } });
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") || "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
-    );
+    const { data: existing, error: idErr } = await supabase
+      .from("webhook_events")
+      .select("id")
+      .eq("id", event.id)
+      .single();
 
-    if (event.type === "checkout.session.completed") {
-      const session = event.data.object as Stripe.Checkout.Session;
-      const filingId = session.client_reference_id || session.metadata?.filing_id;
-      
-      console.log("Processing successful payment for filing:", filingId);
+    if (!idErr && existing) {
+      return cors(new Response(JSON.stringify({ ok: true, duplicate: true })), req);
+    }
+    await supabase.from("webhook_events").insert({ id: event.id, provider: "stripe", type: event.type });
 
-      if (!filingId) {
-        console.error("No filing ID found in session");
-        return new Response("No filing ID found", { status: 400 });
-      }
+    switch (event.type) {
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        const session_id = session.id;
+        const amount_total = session.amount_total ?? null;
+        const currency = session.currency ?? null;
+        const payment_status = session.payment_status ?? null;
+        const metadata = session.metadata ?? {};
+        const filing_id = metadata["filing_id"] ?? null;
+        if (!filing_id) break;
 
-      // Update payment status
-      const { error: paymentError } = await supabase
-        .from("payments")
-        .update({ 
-          status: 'paid'
-        })
-        .eq("session_id", session.id);
+        await supabase.from("payments").upsert({
+          session_id,
+          filing_id,
+          status: payment_status,
+          amount: amount_total,
+          currency
+        }, { onConflict: "session_id" });
 
-      if (paymentError) {
-        console.error("Error updating payment:", paymentError);
-      }
+        await supabase.from("filings")
+          .update({ status: "paid" })
+          .eq("id", filing_id);
 
-      // Update filing status and payment status
-      const { error: filingError } = await supabase
-        .from("filings")
-        .update({ 
-          status: 'generating',
-          payment_status: 'paid'
-        })
-        .eq("id", filingId);
-
-      if (filingError) {
-        console.error("Error updating filing:", filingError);
-      }
-
-      // Add job to filing queue
-      const { error: queueError } = await supabase
-        .from("filing_queue")
-        .insert({
-          filing_id: filingId,
-          job_type: 'generate',
-          status: 'queued'
+        await supabase.rpc("notify_user", {
+          p_user_id: null,
+          p_filing_id: filing_id,
+          p_subject: "Payment received",
+          p_body: "Your payment was received. We're generating your filing package now."
         });
 
-      if (queueError) {
-        console.error("Error adding to queue:", queueError);
+        break;
       }
 
-      // Get filing with user email
-      const { data: filing } = await supabase
-        .from("filings")
-        .select(`
-          id,
-          title,
-          type,
-          user_id,
-          profiles:user_id (email)
-        `)
-        .eq("id", filingId)
-        .single();
+      case "checkout.session.expired": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        const session_id = session.id;
+        await supabase.from("payments")
+          .update({ status: "expired" })
+          .eq("session_id", session_id);
+        break;
+      }
 
-      if (filing) {
-        const userEmail = filing.profiles?.email;
-        
-        if (!userEmail) {
-          console.error('No email found for user:', filing.user_id);
-          return new Response(JSON.stringify({ error: 'User email not found' }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 400,
-          });
+      case "payment_intent.payment_failed": {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        const session_id = (pi.latest_charge ?? "").toString();
+        if (session_id) {
+          await supabase.from("payments")
+            .update({ status: "failed" })
+            .eq("session_id", session_id);
         }
-
-        // Create notification
-        await supabase
-          .from("notifications")
-          .insert({
-            filing_id: filingId,
-            user_id: filing.user_id,
-            type: 'success',
-            title: 'Payment Successful',
-            message: `Your payment for "${filing.title}" has been processed. We're now generating your filing documents.`
-          });
-
-        // Send confirmation email
-        const emailHtml = `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #10b981;">Payment Successful! 🎉</h2>
-            <p>Thank you for your payment. We've successfully received your payment for:</p>
-            
-            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <h3 style="margin: 0 0 10px 0;">${filing.title}</h3>
-              <p style="margin: 5px 0;"><strong>Type:</strong> ${filing.type}</p>
-              <p style="margin: 5px 0;"><strong>Status:</strong> Processing</p>
-            </div>
-            
-            <h3>What happens next?</h3>
-            <p>Our AI system is now generating your IP filing documents. This typically takes 5-10 minutes. You'll receive another email when your documents are ready for download.</p>
-            
-            <p>In the meantime, you can track your filing progress by logging into your IPGenie dashboard.</p>
-            
-            <p style="margin-top: 30px;">Best regards,<br><strong>The IPGenie Team</strong></p>
-            
-            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
-            <p style="font-size: 12px; color: #6b7280;">
-              This is an automated email. Please do not reply to this message.
-            </p>
-          </div>
-        `;
-
-        try {
-          await supabase.functions.invoke('email-sender', {
-            body: {
-              to: userEmail,
-              subject: `Payment Confirmed - ${filing.title}`,
-              html: emailHtml,
-              filing_id: filingId,
-              notification_type: 'payment_success'
-            }
-          });
-          console.log('Payment confirmation email sent to:', userEmail);
-        } catch (emailError) {
-          console.error('Error sending confirmation email:', emailError);
-          // Don't fail the webhook if email fails
-        }
+        break;
       }
 
-      // Trigger the generate-filing function
-      try {
-        await supabase.functions.invoke('generate-filing', {
-          body: { filing_id: filingId }
-        });
-      } catch (invokeError) {
-        console.error("Error invoking generate-filing:", invokeError);
-      }
-
-      console.log("Successfully processed payment webhook");
+      default:
+        break;
     }
 
-    return new Response(JSON.stringify({ received: true }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
-
-  } catch (error: any) {
-    console.error("Webhook error:", error);
-    return new Response(JSON.stringify({ error: error?.message || 'Webhook error' }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
-    });
+    return cors(new Response(JSON.stringify({ ok: true })), req);
+  } catch (_err) {
+    return cors(new Response(JSON.stringify({ ok: false }), { status: 500 }), req);
   }
 });
