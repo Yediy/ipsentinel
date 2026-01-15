@@ -974,6 +974,27 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_events: {
+        Row: {
+          id: string
+          provider: string
+          received_at: string
+          type: string
+        }
+        Insert: {
+          id: string
+          provider: string
+          received_at?: string
+          type: string
+        }
+        Update: {
+          id?: string
+          provider?: string
+          received_at?: string
+          type?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -992,6 +1013,26 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
+      notify_user: {
+        Args: {
+          p_body: string
+          p_filing_id: string
+          p_subject: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      pending_deadlines_window: {
+        Args: { p_days_ahead: number }
+        Returns: {
+          due_at: string
+          email: string
+          filing_id: string
+          id: string
+          title: string
+          user_id: string
+        }[]
+      }
       refresh_upcoming_deadlines: {
         Args: { _filing_id?: string }
         Returns: undefined
