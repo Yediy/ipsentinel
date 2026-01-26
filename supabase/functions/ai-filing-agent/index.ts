@@ -7,6 +7,21 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper function to verify filing ownership
+async function verifyFilingOwnership(supabase: any, filing_id: string, user_id: string): Promise<boolean> {
+  const { data: filing, error } = await supabase
+    .from('filings')
+    .select('user_id')
+    .eq('id', filing_id)
+    .single();
+  
+  if (error || !filing) {
+    return false;
+  }
+  
+  return filing.user_id === user_id;
+}
+
 // Advanced AI Filing Agent with LLM Prompt Chains
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -14,10 +29,36 @@ serve(async (req) => {
   }
 
   try {
+    // SECURITY: Verify authentication
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Authentication required', success: false }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Create authenticated Supabase client with user's token
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
     );
+
+    // Verify the JWT and get user
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabase.auth.getUser(token);
+    
+    if (claimsError || !claimsData?.user) {
+      console.error('JWT verification failed:', claimsError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired token', success: false }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const user = claimsData.user;
+    console.log('Authenticated user:', user.id);
 
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
@@ -25,13 +66,25 @@ serve(async (req) => {
     }
 
     const { action, filing_id, filing_type, data, conversation_step } = await req.json();
-    console.log(`AI Filing Agent - Action: ${action}, Type: ${filing_type}, Step: ${conversation_step}`);
+    console.log(`AI Filing Agent - Action: ${action}, Type: ${filing_type}, Step: ${conversation_step}, User: ${user.id}`);
+
+    // SECURITY: Verify filing ownership for all actions that require a filing_id
+    if (filing_id) {
+      const hasOwnership = await verifyFilingOwnership(supabase, filing_id, user.id);
+      if (!hasOwnership) {
+        console.error(`Unauthorized access attempt: user ${user.id} tried to access filing ${filing_id}`);
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized access to filing', success: false }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
 
     let result;
 
     switch (action) {
       case 'start_session':
-        result = await startFilingSession(supabase, filing_id, filing_type);
+        result = await startFilingSession(supabase, filing_id, filing_type, user.id);
         break;
       case 'process_conversation':
         result = await processConversationStep(supabase, openAIApiKey, filing_id, conversation_step, data);
@@ -61,7 +114,7 @@ serve(async (req) => {
         result = await finalizeFiling(supabase, filing_id);
         break;
       case 'generate_pdf':
-        result = await generatePatentPDF(supabase, filing_id);
+        result = await generatePatentPDF(supabase, filing_id, user.id);
         break;
       default:
         throw new Error(`Unknown action: ${action}`);
@@ -83,12 +136,12 @@ serve(async (req) => {
   }
 });
 
-async function startFilingSession(supabase: any, filing_id: string, filing_type: string) {
-  console.log('Starting AI filing session:', filing_id, filing_type);
+async function startFilingSession(supabase: any, filing_id: string, filing_type: string, user_id: string) {
+  console.log('Starting AI filing session:', filing_id, filing_type, 'for user:', user_id);
   
   const sessionType = `${filing_type}_interview`;
   
-  // Create AI session
+  // Create AI session - RLS will enforce ownership
   const { data: session, error: sessionError } = await supabase
     .from('ai_filing_sessions')
     .insert({
@@ -117,7 +170,7 @@ async function startFilingSession(supabase: any, filing_id: string, filing_type:
 async function processConversationStep(supabase: any, openAIApiKey: string, filing_id: string, step: string, data: any) {
   console.log('Processing conversation step:', step, data);
   
-  // Get current session
+  // Get current session - RLS enforces ownership
   const { data: session, error: sessionError } = await supabase
     .from('ai_filing_sessions')
     .select()
@@ -152,7 +205,7 @@ async function processConversationStep(supabase: any, openAIApiKey: string, fili
     aiResponse = await processWithAI(openAIApiKey, step, data.response, conversationLog);
   }
 
-  // Update session
+  // Update session - RLS enforces ownership
   const { error: updateError } = await supabase
     .from('ai_filing_sessions')
     .update({
@@ -181,7 +234,7 @@ async function processConversationStep(supabase: any, openAIApiKey: string, fili
 async function generatePatentSections(supabase: any, openAIApiKey: string, filing_id: string, conversationData: any) {
   console.log('Generating patent sections for filing:', filing_id);
   
-  // Get prompt templates
+  // Get prompt templates - RLS may apply
   const { data: templates, error: templateError } = await supabase
     .from('ai_prompt_templates')
     .select()
@@ -201,7 +254,7 @@ async function generatePatentSections(supabase: any, openAIApiKey: string, filin
         conversationData
       );
       
-      // Save section to database
+      // Save section to database - RLS enforces ownership
       const { data: section, error: sectionError } = await supabase
         .from('patent_sections')
         .insert({
@@ -232,7 +285,7 @@ async function generatePatentSections(supabase: any, openAIApiKey: string, filin
     }
   }
 
-  // Update filing status
+  // Update filing status - RLS enforces ownership
   await supabase
     .from('filings')
     .update({ status: 'draft_generated' })
@@ -272,7 +325,7 @@ async function classifyTrademarkGoods(supabase: any, openAIApiKey: string, filin
     };
   }
 
-  // Save trademark section
+  // Save trademark section - RLS enforces ownership
   const { data: trademarkSection, error: sectionError } = await supabase
     .from('trademark_sections')
     .upsert({
@@ -333,7 +386,7 @@ Respond in JSON format with: {risk_level, risk_score, concerns, recommendations}
     };
   }
 
-  // Save clearance log
+  // Save clearance log - RLS enforces ownership
   const { data: clearanceLog, error: logError } = await supabase
     .from('trademark_clearance_logs')
     .insert({
@@ -350,7 +403,7 @@ Respond in JSON format with: {risk_level, risk_score, concerns, recommendations}
 
   if (logError) throw logError;
 
-  // Update trademark section with risk assessment
+  // Update trademark section with risk assessment - RLS enforces ownership
   await supabase
     .from('trademark_sections')
     .update({
@@ -542,7 +595,7 @@ async function classifyCopyrightWork(supabase: any, openAIApiKey: string, filing
       throw new Error('Invalid classification response format');
     }
 
-    // Save classification to copyright sections table
+    // Save classification to copyright sections table - RLS enforces ownership
     await supabase
       .from('copyrights')
       .upsert({
@@ -594,7 +647,7 @@ async function generateCopyrightForm(supabase: any, openAIApiKey: string, filing
       throw new Error('Invalid form response format');
     }
 
-    // Update the filing with generated content
+    // Update the filing with generated content - RLS enforces ownership
     await supabase
       .from('filings')
       .update({
@@ -619,7 +672,7 @@ async function handleFileUpload(supabase: any, filing_id: string, fileData: any)
   try {
     console.log('Processing file upload for filing:', filing_id);
     
-    // Get copyright record
+    // Get copyright record - RLS enforces ownership
     const { data: copyright } = await supabase
       .from('copyrights')
       .select('*')
@@ -630,7 +683,7 @@ async function handleFileUpload(supabase: any, filing_id: string, fileData: any)
       throw new Error('Copyright record not found');
     }
 
-    // Save file metadata
+    // Save file metadata - RLS enforces ownership
     const { data: upload } = await supabase
       .from('copyright_uploads')
       .insert({
@@ -656,7 +709,7 @@ async function handleFileUpload(supabase: any, filing_id: string, fileData: any)
 }
 
 async function reviewFiling(supabase: any, filing_id: string) {
-  // Get all sections for review
+  // Get all sections for review - RLS enforces ownership
   const { data: sections } = await supabase
     .from('patent_sections')
     .select()
@@ -670,11 +723,11 @@ async function reviewFiling(supabase: any, filing_id: string) {
 }
 
 // Generate USPTO-compliant PDF document
-async function generatePatentPDF(supabase: any, filing_id: string) {
+async function generatePatentPDF(supabase: any, filing_id: string, user_id: string) {
   try {
     console.log('Generating patent PDF for filing:', filing_id);
     
-    // Get filing details
+    // Get filing details - RLS enforces ownership
     const { data: filing, error: filingError } = await supabase
       .from('filings')
       .select('*')
@@ -683,7 +736,7 @@ async function generatePatentPDF(supabase: any, filing_id: string) {
     
     if (filingError) throw filingError;
     
-    // Get all patent sections
+    // Get all patent sections - RLS enforces ownership
     const { data: sections, error: sectionsError } = await supabase
       .from('patent_sections')
       .select('*')
@@ -695,13 +748,13 @@ async function generatePatentPDF(supabase: any, filing_id: string) {
     // Generate USPTO-compliant PDF content
     const pdfContent = generateUSPTOPatentDocument(filing, sections);
     
-    // Create PDF file name
-    const fileName = `patent_application_${filing.title.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.pdf`;
+    // Create PDF file name with user_id prefix for storage security
+    const fileName = `${user_id}/${filing_id}/patent_application_${Date.now()}.pdf`;
     
     // Store PDF content (in production, use proper PDF generation library)
     const pdfBlob = new Blob([pdfContent], { type: 'application/pdf' });
     
-    // Upload to storage
+    // Upload to storage - storage policies enforce ownership via path
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('filings')
       .upload(fileName, pdfBlob, {
@@ -711,7 +764,7 @@ async function generatePatentPDF(supabase: any, filing_id: string) {
     
     if (uploadError) throw uploadError;
     
-    // Create filing document record
+    // Create filing document record - RLS enforces ownership
     const { data: document, error: docError } = await supabase
       .from('filing_documents')
       .insert({
@@ -792,7 +845,7 @@ Filing ID: ${filing.id}
 }
 
 async function finalizeFiling(supabase: any, filing_id: string) {
-  // Update filing status to completed
+  // Update filing status to completed - RLS enforces ownership
   await supabase
     .from('filings')
     .update({ 
@@ -801,7 +854,7 @@ async function finalizeFiling(supabase: any, filing_id: string) {
     })
     .eq('id', filing_id);
 
-  // Mark AI session as completed
+  // Mark AI session as completed - RLS enforces ownership
   await supabase
     .from('ai_filing_sessions')
     .update({ 
