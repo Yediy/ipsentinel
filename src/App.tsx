@@ -10,6 +10,7 @@ import { AuthGuard } from "./components/AuthGuard";
 import { AdminGuard } from "./components/AdminGuard";
 import { LegalConsentGate } from "./components/LegalConsentGate";
 import { Footer } from "./components/Footer";
+import { CookieConsentBanner } from "./components/CookieConsentBanner";
 import { useEffect } from "react";
 import { initPostHog } from "./lib/posthog";
 import Index from "./pages/Index";
@@ -39,6 +40,7 @@ import Settings from "./pages/Settings";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import RefundPolicy from "./pages/RefundPolicy";
+import DataProcessingAgreement from "./pages/DataProcessingAgreement";
 
 const queryClient = new QueryClient();
 
@@ -68,6 +70,7 @@ const AppContent = () => {
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/refund-policy" element={<RefundPolicy />} />
+            <Route path="/dpa" element={<DataProcessingAgreement />} />
             
             {/* Admin Routes - Protected */}
             <Route path="/admin" element={
@@ -232,6 +235,7 @@ const AppContent = () => {
           </Routes>
         </div>
         <Footer />
+        <CookieConsentBanner />
       </BrowserRouter>
     </div>
   );

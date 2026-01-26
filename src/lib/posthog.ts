@@ -2,6 +2,21 @@ import posthog from 'posthog-js';
 
 const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY;
 const POSTHOG_HOST = import.meta.env.VITE_POSTHOG_HOST || 'https://app.posthog.com';
+const CONSENT_KEY = 'ipsentinel_cookie_consent';
+
+// Check if analytics consent has been given
+const hasAnalyticsConsent = (): boolean => {
+  try {
+    const consent = localStorage.getItem(CONSENT_KEY);
+    if (consent) {
+      const parsed = JSON.parse(consent);
+      return parsed.analytics === true;
+    }
+  } catch (e) {
+    // Invalid consent data
+  }
+  return false;
+};
 
 export const initPostHog = () => {
   if (POSTHOG_KEY && typeof window !== 'undefined') {
@@ -11,28 +26,46 @@ export const initPostHog = () => {
       capture_pageleave: true,
       autocapture: true,
       persistence: 'localStorage',
+      opt_out_capturing_by_default: true, // Respect cookie consent
     });
+
+    // Apply consent on init
+    if (hasAnalyticsConsent()) {
+      posthog.opt_in_capturing();
+    }
   }
 };
 
-// Track funnel events
+// Track funnel events (respects consent)
 export const trackEvent = (eventName: string, properties?: Record<string, any>) => {
-  if (POSTHOG_KEY) {
+  if (POSTHOG_KEY && hasAnalyticsConsent()) {
     posthog.capture(eventName, properties);
   }
 };
 
 // Funnel-specific tracking helpers
 export const trackWizardStart = (wizardType: 'patent' | 'trademark' | 'copyright') => {
-  trackEvent('wizard_started', { wizard_type: wizardType });
+  trackEvent('wizard_started', { 
+    wizard_type: wizardType,
+    timestamp: new Date().toISOString()
+  });
 };
 
 export const trackWizardStep = (wizardType: string, step: number, stepName: string) => {
-  trackEvent('wizard_step_completed', { wizard_type: wizardType, step, step_name: stepName });
+  trackEvent('wizard_step_completed', { 
+    wizard_type: wizardType, 
+    step, 
+    step_name: stepName,
+    timestamp: new Date().toISOString()
+  });
 };
 
-export const trackWizardComplete = (wizardType: string, filingId: string) => {
-  trackEvent('wizard_completed', { wizard_type: wizardType, filing_id: filingId });
+export const trackWizardComplete = (wizardType: string, filingId?: string) => {
+  trackEvent('wizard_completed', { 
+    wizard_type: wizardType, 
+    filing_id: filingId,
+    timestamp: new Date().toISOString()
+  });
 };
 
 export const trackPaymentInitiated = (filingId: string, amount: number) => {
@@ -57,7 +90,7 @@ export const trackDocumentDownloaded = (filingId: string, docType: string) => {
 
 // User identification
 export const identifyUser = (userId: string, traits?: Record<string, any>) => {
-  if (POSTHOG_KEY) {
+  if (POSTHOG_KEY && hasAnalyticsConsent()) {
     posthog.identify(userId, traits);
   }
 };

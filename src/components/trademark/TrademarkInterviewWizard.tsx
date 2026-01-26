@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Search, CheckCircle, Clock, Sparkles, Brain, ArrowRight, AlertTriangle } from "lucide-react";
+import { trackWizardStart, trackWizardStep, trackWizardComplete } from "@/lib/posthog";
 
 // Type definitions for improved type safety across the application
 interface FilingError extends Error {
@@ -130,6 +131,9 @@ const TrademarkInterviewWizard = ({ filing_id, onComplete, onBack }: TrademarkIn
   const [sessionId, setSessionId] = useState<string>("");
 
   useEffect(() => {
+    // Track wizard start
+    trackWizardStart('trademark');
+    
     const fetchSessionId = async () => {
       try {
         const { data, error } = await supabase
@@ -289,6 +293,9 @@ const TrademarkInterviewWizard = ({ filing_id, onComplete, onBack }: TrademarkIn
     }));
 
     if (currentQuestion < trademarkQuestions.length - 1) {
+      // Track step completion
+      trackWizardStep('trademark', currentQuestion + 1, trademarkQuestions[currentQuestion].id);
+      
       setCurrentQuestion(prev => prev + 1);
       setCurrentAnswer("");
       
@@ -302,6 +309,10 @@ const TrademarkInterviewWizard = ({ filing_id, onComplete, onBack }: TrademarkIn
         ...responses,
         [trademarkQuestions[currentQuestion].id]: currentAnswer
       };
+      
+      // Track wizard completion
+      trackWizardComplete('trademark', filing_id);
+      
       onComplete(finalResponses);
     }
   };

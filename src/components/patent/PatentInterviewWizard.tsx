@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Lightbulb, ArrowLeft, ArrowRight, Save, Bot, User, CheckCircle, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { trackWizardStart, trackWizardStep, trackWizardComplete } from "@/lib/posthog";
 
 interface InterviewQuestion {
   id: string;
@@ -120,10 +121,13 @@ const PatentInterviewWizard = ({ onComplete }: { onComplete: (data: PatentData) 
     }
   ];
 
-  // Generate session ID on mount
+  // Generate session ID on mount and track wizard start
   useEffect(() => {
     const id = `patent_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     setSessionId(id);
+    
+    // Track wizard start event
+    trackWizardStart('patent');
   }, []);
 
   // Auto-save responses
@@ -158,6 +162,9 @@ const PatentInterviewWizard = ({ onComplete }: { onComplete: (data: PatentData) 
     setIsThinking(false);
 
     if (currentStep < interviewQuestions.length - 1) {
+      // Track step completion
+      trackWizardStep('patent', currentStep + 1, currentQuestion.id);
+      
       setCurrentStep(currentStep + 1);
       setCurrentAnswer("");
     } else {
@@ -175,6 +182,9 @@ const PatentInterviewWizard = ({ onComplete }: { onComplete: (data: PatentData) 
         inventors: responses.inventors || "",
         commercialUse: responses.commercialUse || ""
       };
+      
+      // Track wizard completion
+      trackWizardComplete('patent');
       
       onComplete(patentData);
     }
