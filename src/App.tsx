@@ -9,6 +9,9 @@ import { AppSidebar } from "./components/AppSidebar";
 import { AuthGuard } from "./components/AuthGuard";
 import { AdminGuard } from "./components/AdminGuard";
 import { LegalConsentGate } from "./components/LegalConsentGate";
+import { Footer } from "./components/Footer";
+import { useEffect } from "react";
+import { initPostHog } from "./lib/posthog";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import PleaseVerify from "./pages/PleaseVerify";
@@ -33,17 +36,22 @@ import Analytics from "./pages/Analytics";
 import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
 import Settings from "./pages/Settings";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
+import RefundPolicy from "./pages/RefundPolicy";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <div className="min-h-screen relative">
-        <SpaceBackground />
-        <BrowserRouter>
+const AppContent = () => {
+  useEffect(() => {
+    initPostHog();
+  }, []);
+
+  return (
+    <div className="min-h-screen relative flex flex-col">
+      <SpaceBackground />
+      <BrowserRouter>
+        <div className="flex-1">
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
@@ -55,6 +63,11 @@ const App = () => (
             <Route path="/calculator" element={<IPGenieCostCalculator />} />
             <Route path="/prior-art" element={<PriorArtSearch />} />
             <Route path="/tm-status" element={<TrademarkStatus />} />
+            
+            {/* Legal Pages - Public */}
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/refund-policy" element={<RefundPolicy />} />
             
             {/* Admin Routes - Protected */}
             <Route path="/admin" element={
@@ -217,8 +230,19 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
-      </div>
+        </div>
+        <Footer />
+      </BrowserRouter>
+    </div>
+  );
+};
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <AppContent />
     </TooltipProvider>
   </QueryClientProvider>
 );
