@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, Shield, UserX, RefreshCw } from "lucide-react";
+import { Users, Shield, UserX, RefreshCw, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -18,6 +18,7 @@ interface UserWithRole {
 export function UserManagement() {
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
+  const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -59,30 +60,41 @@ export function UserManagement() {
 
   const toggleAdminRole = async (userId: string, currentlyAdmin: boolean) => {
     try {
-      if (currentlyAdmin) {
-        // Remove admin role
-        const { error } = await supabase
-          .from('user_roles')
-          .delete()
-          .eq('user_id', userId)
-          .eq('role', 'admin');
-
-        if (error) throw error;
-        toast.success('Admin role removed');
-      } else {
-        // Add admin role
-        const { error } = await supabase
-          .from('user_roles')
-          .insert({ user_id: userId, role: 'admin' });
-
-        if (error) throw error;
-        toast.success('Admin role granted');
-      }
+      setUpdatingUserId(userId);
       
+      // Use the secure admin-manage-roles edge function instead of direct DB access
+      const { data, error } = await supabase.functions.invoke('admin-manage-roles', {
+        body: {
+          action: currentlyAdmin ? 'remove' : 'add',
+          userId: userId,
+          role: 'admin'
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data?.success) {
+        throw new Error(data?.error || 'Failed to update role');
+      }
+
+      toast.success(currentlyAdmin ? 'Admin role removed' : 'Admin role granted');
       fetchUsers();
     } catch (error: any) {
       console.error('Error toggling admin role:', error);
-      toast.error('Failed to update user role');
+      
+      // Handle specific error messages from the edge function
+      const errorMessage = error.message || 'Failed to update user role';
+      if (errorMessage.includes('last admin')) {
+        toast.error('Cannot remove the last admin');
+      } else if (errorMessage.includes('Admin access required')) {
+        toast.error('You do not have permission to manage roles');
+      } else {
+        toast.error(errorMessage);
+      }
+    } finally {
+      setUpdatingUserId(null);
     }
   };
 
@@ -128,6 +140,7 @@ export function UserManagement() {
           <TableBody>
             {users.map((user) => {
               const isAdmin = user.roles.includes('admin');
+              const isUpdating = updatingUserId === user.user_id;
               return (
                 <TableRow key={user.user_id}>
                   <TableCell className="font-medium">{user.email}</TableCell>
@@ -150,8 +163,11 @@ export function UserManagement() {
                       onClick={() => toggleAdminRole(user.user_id, isAdmin)}
                       variant={isAdmin ? 'destructive' : 'default'}
                       size="sm"
+                      disabled={isUpdating}
                     >
-                      {isAdmin ? (
+                      {isUpdating ? (
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      ) : isAdmin ? (
                         <>
                           <UserX className="h-3 w-3 mr-1" />
                           Remove Admin
