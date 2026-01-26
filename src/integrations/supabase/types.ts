@@ -434,7 +434,6 @@ export type Database = {
           claims_zh: string | null
           cn_type: Database["public"]["Enums"]["cn_type"] | null
           components: Json | null
-          contact_email: string | null
           country: string
           country_code: string
           created_at: string
@@ -480,7 +479,6 @@ export type Database = {
           claims_zh?: string | null
           cn_type?: Database["public"]["Enums"]["cn_type"] | null
           components?: Json | null
-          contact_email?: string | null
           country: string
           country_code?: string
           created_at?: string
@@ -526,7 +524,6 @@ export type Database = {
           claims_zh?: string | null
           cn_type?: Database["public"]["Enums"]["cn_type"] | null
           components?: Json | null
-          contact_email?: string | null
           country?: string
           country_code?: string
           created_at?: string
@@ -565,7 +562,6 @@ export type Database = {
       }
       notifications: {
         Row: {
-          contact_email: string | null
           created_at: string
           filing_id: string | null
           id: string
@@ -576,7 +572,6 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
-          contact_email?: string | null
           created_at?: string
           filing_id?: string | null
           id?: string
@@ -587,7 +582,6 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
-          contact_email?: string | null
           created_at?: string
           filing_id?: string | null
           id?: string
