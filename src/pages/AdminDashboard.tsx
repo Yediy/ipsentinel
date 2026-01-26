@@ -11,7 +11,8 @@ import {
   CheckCircle,
   Calendar,
   Settings,
-  Shield
+  Shield,
+  Flag
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +21,7 @@ import { AdminBanner } from "@/components/admin/AdminBanner";
 import { UserManagement } from "@/components/admin/UserManagement";
 import { SystemHealth } from "@/components/admin/SystemHealth";
 import { SecurityDashboard } from "@/components/admin/SecurityDashboard";
+import { FeatureFlagsManager } from "@/components/admin/FeatureFlagsManager";
 
 interface DashboardStats {
   totalFilings: number;
@@ -228,6 +230,10 @@ const AdminDashboard = () => {
           <TabsTrigger value="filings">Recent Filings</TabsTrigger>
           <TabsTrigger value="users">User Management</TabsTrigger>
           <TabsTrigger value="deadlines">Upcoming Deadlines</TabsTrigger>
+          <TabsTrigger value="flags" className="flex items-center gap-2">
+            <Flag className="h-4 w-4" />
+            Feature Flags
+          </TabsTrigger>
           <TabsTrigger value="security" className="flex items-center gap-2">
             <Shield className="h-4 w-4" />
             Security
@@ -327,6 +333,10 @@ const AdminDashboard = () => {
               </Table>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="flags">
+          <FeatureFlagsManager />
         </TabsContent>
 
         <TabsContent value="security">

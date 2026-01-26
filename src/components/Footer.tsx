@@ -32,6 +32,12 @@ export function Footer() {
             >
               Refund Policy
             </Link>
+            <Link 
+              to="/dpa" 
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Data Processing Agreement
+            </Link>
           </nav>
         </div>
 

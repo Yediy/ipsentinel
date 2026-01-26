@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Upload, FileText, Image, Music, Code, Video, FileArchive, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { trackWizardStart, trackWizardStep, trackWizardComplete } from "@/lib/posthog";
 
 interface CopyrightInterviewWizardProps {
   filingId: string;
@@ -28,6 +29,11 @@ export const CopyrightInterviewWizard = ({ filingId, onComplete }: CopyrightInte
   const [loading, setLoading] = useState(false);
   const [files, setFiles] = useState<FileUpload[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Track wizard start on mount
+  useEffect(() => {
+    trackWizardStart('copyright');
+  }, []);
   
   const [formData, setFormData] = useState({
     workTitle: '',
@@ -169,6 +175,7 @@ export const CopyrightInterviewWizard = ({ filingId, onComplete }: CopyrightInte
       }));
 
       toast.success('Work classified successfully!');
+      trackWizardStep('copyright', 2, 'author_owner_information');
       setCurrentStep(3);
       
     } catch (error) {
@@ -205,6 +212,7 @@ export const CopyrightInterviewWizard = ({ filingId, onComplete }: CopyrightInte
       if (error) throw error;
 
       toast.success('Copyright form generated successfully!');
+      trackWizardComplete('copyright', filingId);
       onComplete(data.form_data);
       
     } catch (error) {
@@ -302,7 +310,10 @@ export const CopyrightInterviewWizard = ({ filingId, onComplete }: CopyrightInte
         )}
 
         <Button 
-          onClick={() => setCurrentStep(2)} 
+          onClick={() => {
+            trackWizardStep('copyright', 1, 'work_information');
+            setCurrentStep(2);
+          }} 
           className="w-full"
           disabled={!formData.workTitle || files.length === 0}
         >
