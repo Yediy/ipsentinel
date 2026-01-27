@@ -1,19 +1,23 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getValidatedCorsHeaders, createCorsPreflightResponse } from "../_shared/cors-validator.ts";
+import { captureException } from "../_shared/sentry.ts";
+import { rateLimitMiddleware, RateLimitPresets } from "../_shared/rate-limiter.ts";
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getValidatedCorsHeaders(origin);
+  
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return createCorsPreflightResponse(origin);
   }
 
   try {
+    // Rate limiting for payment endpoints
+    const rateLimitResponse = rateLimitMiddleware(req, RateLimitPresets.payment, undefined, corsHeaders);
+    if (rateLimitResponse) return rateLimitResponse;
     // Require authentication
     const authHeader = req.headers.get('authorization');
     if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
@@ -146,6 +150,13 @@ serve(async (req) => {
     );
   } catch (error: any) {
     console.error("Error creating payment:", error);
+    
+    // Report to Sentry
+    await captureException(error, {
+      tags: { function: "create-payment" },
+      request: req,
+    });
+    
     return new Response(
       JSON.stringify({ error: error?.message || 'Payment creation failed' }),
       {

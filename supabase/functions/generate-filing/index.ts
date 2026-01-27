@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { getValidatedCorsHeaders, createCorsPreflightResponse } from "../_shared/cors-validator.ts";
+import { captureException } from "../_shared/sentry.ts";
+import { rateLimitMiddleware, RateLimitPresets } from "../_shared/rate-limiter.ts";
 
 serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -13,6 +15,9 @@ serve(async (req) => {
   const corsHeaders = getValidatedCorsHeaders(origin);
 
   try {
+    // Rate limiting - apply before any processing
+    const rateLimitResponse = rateLimitMiddleware(req, RateLimitPresets.ai, undefined, corsHeaders);
+    if (rateLimitResponse) return rateLimitResponse;
     // Validate authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
@@ -193,6 +198,13 @@ serve(async (req) => {
 
   } catch (error: any) {
     console.error("Generate filing error:", error);
+    
+    // Report to Sentry
+    await captureException(error, {
+      tags: { function: "generate-filing" },
+      request: req,
+    });
+    
     return new Response(JSON.stringify({ error: error?.message || 'Filing generation failed' }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,

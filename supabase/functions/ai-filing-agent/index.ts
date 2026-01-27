@@ -1,11 +1,9 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { getValidatedCorsHeaders, createCorsPreflightResponse } from "../_shared/cors-validator.ts";
+import { captureException } from "../_shared/sentry.ts";
+import { rateLimitMiddleware, RateLimitPresets } from "../_shared/rate-limiter.ts";
 
 // Helper function to verify filing ownership
 async function verifyFilingOwnership(supabase: any, filing_id: string, user_id: string): Promise<boolean> {
@@ -24,11 +22,18 @@ async function verifyFilingOwnership(supabase: any, filing_id: string, user_id: 
 
 // Advanced AI Filing Agent with LLM Prompt Chains
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getValidatedCorsHeaders(origin);
+  
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return createCorsPreflightResponse(origin);
   }
 
   try {
+    // Rate limiting - apply before any processing
+    const rateLimitResponse = rateLimitMiddleware(req, RateLimitPresets.ai, undefined, corsHeaders);
+    if (rateLimitResponse) return rateLimitResponse;
+
     // SECURITY: Verify authentication
     const authHeader = req.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -126,6 +131,13 @@ serve(async (req) => {
 
   } catch (error: any) {
     console.error('AI Filing Agent error:', error);
+    
+    // Report to Sentry
+    await captureException(error, {
+      tags: { function: "ai-filing-agent" },
+      request: req,
+    });
+    
     return new Response(JSON.stringify({ 
       error: error?.message || 'Unknown error occurred',
       success: false 
