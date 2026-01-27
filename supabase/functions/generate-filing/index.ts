@@ -1,25 +1,90 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { getValidatedCorsHeaders, createCorsPreflightResponse } from "../_shared/cors-validator.ts";
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return createCorsPreflightResponse(origin);
   }
 
+  const corsHeaders = getValidatedCorsHeaders(origin);
+
   try {
+    // Validate authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: Missing or invalid authorization header' }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
+    
+    // Create authenticated client for user verification
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    // Validate JWT and get user claims
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getUser(token);
+    
+    if (claimsError || !claimsData?.user) {
+      console.error('Auth validation failed:', claimsError);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const userId = claimsData.user.id;
+    console.log("Authenticated user:", userId);
+
     const { filing_id } = await req.json();
     console.log("Generating filing for ID:", filing_id);
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") || "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
-    );
+    // Create service role client for database operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Verify user owns the filing
+    const { data: filing, error: filingError } = await supabase
+      .from("filings")
+      .select("*")
+      .eq("id", filing_id)
+      .single();
+
+    if (filingError || !filing) {
+      console.error("Filing not found:", filingError);
+      return new Response(
+        JSON.stringify({ error: "Filing not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check ownership - user must own the filing or be admin
+    if (filing.user_id !== userId) {
+      // Check if user is admin
+      const { data: adminCheck } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .eq("role", "admin")
+        .single();
+
+      if (!adminCheck) {
+        console.error("Unauthorized: User does not own this filing");
+        return new Response(
+          JSON.stringify({ error: "Unauthorized: You do not own this filing" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
 
     // Update queue status to processing
     await supabase
@@ -29,17 +94,6 @@ serve(async (req) => {
         started_at: new Date().toISOString()
       })
       .eq("filing_id", filing_id);
-
-    // Get filing data
-    const { data: filing, error: filingError } = await supabase
-      .from("filings")
-      .select("*")
-      .eq("id", filing_id)
-      .single();
-
-    if (filingError || !filing) {
-      throw new Error("Filing not found");
-    }
 
     console.log("Processing filing:", filing.title, "Type:", filing.type);
 
@@ -120,8 +174,8 @@ serve(async (req) => {
     await supabase
       .from("notifications")
       .insert({
+        user_id: filing.user_id,
         filing_id: filing_id,
-        contact_email: filing.contact_email,
         type: 'success',
         title: 'Filing Ready',
         message: `Your ${filing.type} filing "${filing.title}" is ready for download!`
@@ -241,7 +295,6 @@ Format as JSON with these sections: work_description, classification, author_tem
 
 async function generatePDF(filing: any, content: any): Promise<Uint8Array> {
   // Simple PDF generation using basic text formatting
-  // In production, you'd use a proper PDF library
   const pdfContent = `
 %PDF-1.4
 1 0 obj
@@ -328,5 +381,5 @@ Generated on: ${new Date().toDateString()}
 Country: ${filing.country}
 ABSTRACT:
 ${content.abstract || content.description || 'Generated content will appear here'}`;
-  return textContent.length + 100; // Add some padding for PDF formatting
+  return textContent.length + 100;
 }
