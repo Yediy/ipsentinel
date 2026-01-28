@@ -1,4 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { rateLimitMiddleware, RateLimitPresets } from '../_shared/rate-limiter.ts';
+import { captureException } from '../_shared/sentry.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,6 +11,12 @@ Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Rate limiting for webhook protection
+  const rateLimitResponse = rateLimitMiddleware(req, RateLimitPresets.webhook, undefined, corsHeaders);
+  if (rateLimitResponse) {
+    return rateLimitResponse;
   }
 
   try {
@@ -71,8 +79,8 @@ Deno.serve(async (req) => {
         .from('documents')
         .insert({
           filing_id,
-          document_kind: kind,
-          file_url: url,
+          kind: kind,
+          url: url,
           sha256
         })
         .select()
@@ -106,6 +114,7 @@ Deno.serve(async (req) => {
 
   } catch (error: any) {
     console.error('Webhook processing error:', error);
+    captureException(error, req);
     return new Response(
       JSON.stringify({ error: 'Internal server error', details: error?.message }),
       { 
