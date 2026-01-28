@@ -3,6 +3,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.2';
 import Stripe from 'https://esm.sh/stripe@14.21.0';
 import { getValidatedCorsHeaders, createCorsPreflightResponse } from '../_shared/cors-validator.ts';
+import { rateLimitMiddleware, RateLimitPresets } from '../_shared/rate-limiter.ts';
+import { captureException } from '../_shared/sentry.ts';
 
 serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -11,6 +13,12 @@ serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return createCorsPreflightResponse(origin);
+  }
+
+  // Rate limiting for webhook protection
+  const rateLimitResponse = rateLimitMiddleware(req, RateLimitPresets.webhook, undefined, corsHeaders);
+  if (rateLimitResponse) {
+    return rateLimitResponse;
   }
 
   try {
@@ -230,6 +238,7 @@ serve(async (req) => {
 
   } catch (error: any) {
     console.error('Webhook processing error:', error);
+    captureException(error, req);
     return new Response(
       JSON.stringify({ 
         error: error.message || 'Webhook processing failed',

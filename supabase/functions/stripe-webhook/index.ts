@@ -2,6 +2,8 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.23.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
+import { rateLimitMiddleware, RateLimitPresets, createRateLimitHeaders } from '../_shared/rate-limiter.ts';
+import { captureException } from '../_shared/sentry.ts';
 
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 const STRIPE_WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
@@ -35,6 +37,12 @@ serve(async (req: Request) => {
       }),
       req
     );
+  }
+
+  // Rate limiting for webhook protection
+  const rateLimitResponse = rateLimitMiddleware(req, RateLimitPresets.webhook);
+  if (rateLimitResponse) {
+    return cors(rateLimitResponse, req);
   }
 
   try {
@@ -122,7 +130,8 @@ serve(async (req: Request) => {
     }
 
     return cors(new Response(JSON.stringify({ ok: true })), req);
-  } catch (_err) {
+  } catch (err) {
+    captureException(err as Error, req);
     return cors(new Response(JSON.stringify({ ok: false }), { status: 500 }), req);
   }
 });
