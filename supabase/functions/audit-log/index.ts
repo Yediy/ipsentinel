@@ -1,10 +1,6 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getValidatedCorsHeaders, createCorsPreflightResponse } from "../_shared/cors-validator.ts";
 
 interface AuditLogRequest {
   action: string;
@@ -15,9 +11,12 @@ interface AuditLogRequest {
 }
 
 serve(async (req) => {
+  const origin = req.headers.get("origin");
+  const corsHeaders = getValidatedCorsHeaders(origin);
+
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return createCorsPreflightResponse(origin);
   }
 
   try {

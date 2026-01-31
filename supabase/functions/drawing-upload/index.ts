@@ -1,15 +1,14 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { getValidatedCorsHeaders, createCorsPreflightResponse } from "../_shared/cors-validator.ts";
 
 serve(async (req) => {
+  const origin = req.headers.get("origin");
+  const corsHeaders = getValidatedCorsHeaders(origin);
+
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return createCorsPreflightResponse(origin);
   }
 
   try {
@@ -69,20 +68,26 @@ serve(async (req) => {
       throw new Error(`Upload failed: ${uploadError.message}`);
     }
 
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
+    // Generate signed URL (1 hour expiry) instead of public URL for security
+    const { data: signedUrlData, error: signedUrlError } = await supabase.storage
       .from('filings')
-      .getPublicUrl(filePath);
+      .createSignedUrl(filePath, 3600); // 1 hour expiry
 
-    console.log('Drawing uploaded successfully:', publicUrl);
+    if (signedUrlError) {
+      console.error('Failed to create signed URL:', signedUrlError);
+      throw new Error(`Failed to generate secure URL: ${signedUrlError.message}`);
+    }
+
+    console.log('Drawing uploaded successfully with signed URL');
 
     return new Response(
       JSON.stringify({
         success: true,
-        asset_url: publicUrl,
+        asset_url: signedUrlData.signedUrl,
         file_path: filePath,
         original_name: file.name,
-        size: file.size
+        size: file.size,
+        expires_in: 3600 // URL expires in 1 hour
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
