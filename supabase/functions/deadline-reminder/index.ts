@@ -1,8 +1,9 @@
 // supabase/functions/deadline-reminder/index.ts
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
-import { createSecureResponse, handleCorsPreFlight } from '../_shared/security-headers.ts';
+import { createSecureResponse } from '../_shared/security-headers.ts';
 import { handleError } from '../_shared/error-handler.ts';
+import { getValidatedCorsHeaders, createCorsPreflightResponse } from '../_shared/cors-validator.ts';
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE")!;
@@ -48,8 +49,11 @@ async function sendEmailPostmark(to: string, subject: string, textBody: string, 
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getValidatedCorsHeaders(origin);
+
   if (req.method === 'OPTIONS') {
-    return handleCorsPreFlight();
+    return createCorsPreflightResponse(origin);
   }
 
   try {
@@ -195,10 +199,10 @@ This is an automated reminder.`;
       deadlines_found: rows.length,
       emails_sent: emailsSent,
       skipped_due_to_preferences: skippedDueToPrefs
-    });
+    }, 200, corsHeaders);
 
   } catch (error: any) {
     console.error('Deadline reminder error:', error);
-    return handleError(error);
+    return handleError(error, corsHeaders);
   }
 });

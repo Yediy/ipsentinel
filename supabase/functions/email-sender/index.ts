@@ -1,8 +1,9 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.2';
-import { createSecureResponse, handleCorsPreFlight } from '../_shared/security-headers.ts';
+import { createSecureResponse } from '../_shared/security-headers.ts';
 import { handleError, createValidationError } from '../_shared/error-handler.ts';
 import { validateEmail } from '../_shared/validation.ts';
+import { getValidatedCorsHeaders, createCorsPreflightResponse } from '../_shared/cors-validator.ts';
 
 interface EmailRequest {
   to: string;
@@ -14,8 +15,11 @@ interface EmailRequest {
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getValidatedCorsHeaders(origin);
+
   if (req.method === 'OPTIONS') {
-    return handleCorsPreFlight();
+    return createCorsPreflightResponse(origin);
   }
 
   try {
@@ -148,10 +152,10 @@ serve(async (req) => {
       success: true,
       message: postmarkApiKey ? 'Email sent successfully' : 'Email logged (add POSTMARK_API_KEY for actual sending)',
       email_sent: !!postmarkApiKey
-    });
+    }, 200, corsHeaders);
 
   } catch (error: any) {
     console.error('Email sender error:', error);
-    return handleError(error);
+    return handleError(error, corsHeaders);
   }
 });
