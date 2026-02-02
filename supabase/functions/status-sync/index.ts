@@ -1,11 +1,15 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.2';
-import { createSecureResponse, handleCorsPreFlight } from '../_shared/security-headers.ts';
+import { createSecureResponse } from '../_shared/security-headers.ts';
 import { handleError } from '../_shared/error-handler.ts';
+import { getValidatedCorsHeaders, createCorsPreflightResponse } from '../_shared/cors-validator.ts';
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getValidatedCorsHeaders(origin);
+
   if (req.method === 'OPTIONS') {
-    return handleCorsPreFlight();
+    return createCorsPreflightResponse(origin);
   }
 
   try {
@@ -154,10 +158,10 @@ serve(async (req) => {
       message: `Updated ${updatedCount} trademark statuses`,
       filings_checked: filings?.length || 0,
       updated_count: updatedCount
-    });
+    }, 200, corsHeaders);
 
   } catch (error: any) {
     console.error('Status sync error:', error);
-    return handleError(error);
+    return handleError(error, corsHeaders);
   }
 });

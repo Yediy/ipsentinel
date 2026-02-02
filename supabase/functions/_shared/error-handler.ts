@@ -12,7 +12,7 @@ export class AppError extends Error {
   }
 }
 
-export function handleError(error: unknown): Response {
+export function handleError(error: unknown, corsHeaders: Record<string, string> = {}): Response {
   console.error('Error occurred:', error);
 
   if (error instanceof AppError) {
@@ -22,7 +22,8 @@ export function handleError(error: unknown): Response {
         message: error.message,
         ...(error.details && { details: error.details }),
       },
-      error.statusCode
+      error.statusCode,
+      corsHeaders
     );
   }
 
@@ -34,7 +35,8 @@ export function handleError(error: unknown): Response {
         error: 'INTERNAL_ERROR',
         message: isProduction ? 'An unexpected error occurred' : error.message,
       },
-      500
+      500,
+      corsHeaders
     );
   }
 
@@ -43,7 +45,8 @@ export function handleError(error: unknown): Response {
       error: 'UNKNOWN_ERROR',
       message: 'An unexpected error occurred',
     },
-    500
+    500,
+    corsHeaders
   );
 }
 

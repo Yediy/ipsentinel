@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.2';
-import { corsHeaders, createSecureResponse, handleCorsPreFlight } from '../_shared/security-headers.ts';
+import { createSecureResponse } from '../_shared/security-headers.ts';
+import { getValidatedCorsHeaders, createCorsPreflightResponse } from '../_shared/cors-validator.ts';
 
 const POSTMARK_API_KEY = Deno.env.get('POSTMARK_API_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -13,15 +14,18 @@ interface WelcomeEmailRequest {
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getValidatedCorsHeaders(origin);
+
   if (req.method === 'OPTIONS') {
-    return handleCorsPreFlight();
+    return createCorsPreflightResponse(origin);
   }
 
   try {
     const { user_id, email, name }: WelcomeEmailRequest = await req.json();
 
     if (!email) {
-      return createSecureResponse({ error: 'Email is required' }, 400);
+      return createSecureResponse({ error: 'Email is required' }, 400, corsHeaders);
     }
 
     // Send welcome email via Postmark
@@ -89,13 +93,14 @@ serve(async (req) => {
     return createSecureResponse({ 
       success: true, 
       message: 'Welcome email sent successfully' 
-    });
+    }, 200, corsHeaders);
 
   } catch (error: any) {
     console.error('Error sending welcome email:', error);
     return createSecureResponse(
       { error: 'Failed to send welcome email', details: error.message },
-      500
+      500,
+      corsHeaders
     );
   }
 });
