@@ -17,3 +17,6 @@ verify_jwt = true
 
 [functions.deadline-reminder]
 verify_jwt = false
+
+[functions.cleanup-expired-data]
+verify_jwt = false
