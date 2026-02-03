@@ -284,6 +284,7 @@ export type Database = {
       documents: {
         Row: {
           created_at: string | null
+          delete_after: string | null
           filing_id: string
           id: string
           kind: Database["public"]["Enums"]["doc_kind"]
@@ -292,6 +293,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          delete_after?: string | null
           filing_id: string
           id?: string
           kind?: Database["public"]["Enums"]["doc_kind"]
@@ -300,6 +302,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          delete_after?: string | null
           filing_id?: string
           id?: string
           kind?: Database["public"]["Enums"]["doc_kind"]
@@ -559,6 +562,91 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      generation_jobs: {
+        Row: {
+          attempts: number
+          created_at: string
+          id: string
+          intake_id: string | null
+          last_error: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          intake_id?: string | null
+          last_error?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          intake_id?: string | null
+          last_error?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generation_jobs_intake_id_fkey"
+            columns: ["intake_id"]
+            isOneToOne: false
+            referencedRelation: "intakes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      intakes: {
+        Row: {
+          answers_json: Json
+          created_at: string
+          delete_after: string
+          filing_id: string | null
+          id: string
+          quality_score: number | null
+          status: string
+          updated_at: string
+          user_id: string
+          wizard_version: string
+        }
+        Insert: {
+          answers_json?: Json
+          created_at?: string
+          delete_after?: string
+          filing_id?: string | null
+          id?: string
+          quality_score?: number | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          wizard_version?: string
+        }
+        Update: {
+          answers_json?: Json
+          created_at?: string
+          delete_after?: string
+          filing_id?: string | null
+          id?: string
+          quality_score?: number | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          wizard_version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intakes_filing_id_fkey"
+            columns: ["filing_id"]
+            isOneToOne: false
+            referencedRelation: "filings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
