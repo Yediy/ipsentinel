@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { 
   ArrowLeft, 
   ArrowRight, 
-  Save, 
   Trash2, 
   Loader, 
   Clock,
@@ -16,7 +15,8 @@ import {
 import { useProvisionalWizard } from './hooks/useProvisionalWizard';
 import { QuestionRenderer } from './QuestionRenderer';
 import { QualityMeter } from './QualityMeter';
-import { WizardAnswers, MIN_QUALITY_SCORE } from './types';
+import { PaymentFlow } from './PaymentFlow';
+import { WizardAnswers } from './types';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,10 +34,14 @@ interface ProvisionalPatentWizardProps {
   onComplete?: () => void;
 }
 
+type WizardView = 'questions' | 'payment';
+
 export const ProvisionalPatentWizard: React.FC<ProvisionalPatentWizardProps> = ({
   filingId,
   onComplete
 }) => {
+  const [view, setView] = useState<WizardView>('questions');
+  
   const {
     step,
     totalSteps,
@@ -46,6 +50,7 @@ export const ProvisionalPatentWizard: React.FC<ProvisionalPatentWizardProps> = (
     answers,
     saving,
     qualityScore,
+    intakeId,
     isComplete,
     isQualityPassing,
     updateAnswer,
@@ -57,6 +62,24 @@ export const ProvisionalPatentWizard: React.FC<ProvisionalPatentWizardProps> = (
   } = useProvisionalWizard({ filingId, onComplete });
 
   const currentValue = answers[currentQuestion.id as keyof WizardAnswers];
+
+  const handleProceedToPayment = async () => {
+    if (isQualityPassing && intakeId) {
+      setView('payment');
+    }
+  };
+
+  // Show payment flow
+  if (view === 'payment' && intakeId && qualityScore) {
+    return (
+      <PaymentFlow
+        intakeId={intakeId}
+        qualityScore={qualityScore.overall}
+        onCancel={() => setView('questions')}
+        onSuccess={onComplete}
+      />
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
@@ -176,12 +199,12 @@ export const ProvisionalPatentWizard: React.FC<ProvisionalPatentWizardProps> = (
               
               {isComplete ? (
                 <Button
-                  onClick={goNext}
-                  disabled={!isQualityPassing}
+                  onClick={handleProceedToPayment}
+                  disabled={!isQualityPassing || !intakeId}
                   className="gap-2"
                 >
                   <FileText className="h-4 w-4" />
-                  Generate Patent Draft
+                  Proceed to Payment
                 </Button>
               ) : (
                 <Button onClick={goNext} className="gap-2">
