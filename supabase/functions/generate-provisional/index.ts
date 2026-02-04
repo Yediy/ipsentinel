@@ -226,13 +226,46 @@ serve(async (req) => {
         .eq('id', job.id);
     }
 
-    // Notify user
+    // Notify user via in-app notification
     await supabase.rpc('notify_user', {
       p_user_id: intake.user_id,
       p_filing_id: filing_id,
       p_subject: 'Patent Draft Ready',
       p_body: 'Your provisional patent draft is ready for review.'
     });
+
+    // Get user email for notification
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('email')
+      .eq('user_id', intake.user_id)
+      .single();
+
+    // Send email notification with download link
+    if (profile?.email) {
+      const viewUrl = `https://ipsentinel.lovable.app/patent/${filing_id}`;
+      
+      try {
+        await fetch(`${SUPABASE_URL}/functions/v1/email-sender`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
+          },
+          body: JSON.stringify({
+            to: profile.email,
+            subject: 'Your Provisional Patent Draft is Ready!',
+            html: generateEmailHTML(answers.title || generatedContent.title, viewUrl),
+            filing_id: filing_id,
+            notification_type: 'patent_ready'
+          })
+        });
+        console.log('Email notification sent to:', profile.email);
+      } catch (emailError) {
+        console.error('Failed to send email notification:', emailError);
+        // Don't fail the whole operation if email fails
+      }
+    }
 
     console.log("Generation complete for filing:", filing_id);
 
@@ -251,3 +284,70 @@ serve(async (req) => {
     );
   }
 });
+
+function generateEmailHTML(title: string, viewUrl: string): string {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: 0 auto; padding: 20px;">
+    <tr>
+      <td style="background-color: #ffffff; border-radius: 8px; padding: 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <h1 style="margin: 0 0 24px; font-size: 24px; color: #18181b;">
+          🎉 Your Patent Draft is Ready!
+        </h1>
+        
+        <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">
+          Great news! Your provisional patent application draft for <strong>"${title}"</strong> has been generated and is ready for review.
+        </p>
+        
+        <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">
+          Your draft includes:
+        </p>
+        
+        <ul style="margin: 0 0 24px; padding-left: 24px; font-size: 14px; line-height: 1.8; color: #52525b;">
+          <li>Abstract</li>
+          <li>Background of the Invention</li>
+          <li>Summary of the Invention</li>
+          <li>Detailed Description</li>
+          <li>Patent Claims</li>
+          <li>Figure Descriptions</li>
+        </ul>
+        
+        <a href="${viewUrl}" style="display: inline-block; padding: 14px 28px; background-color: #2563eb; color: #ffffff; text-decoration: none; font-weight: 600; border-radius: 6px; font-size: 16px;">
+          View Your Patent Draft
+        </a>
+        
+        <hr style="margin: 32px 0; border: none; border-top: 1px solid #e4e4e7;">
+        
+        <p style="margin: 0 0 16px; font-size: 14px; color: #71717a;">
+          <strong>What's Next?</strong>
+        </p>
+        
+        <ol style="margin: 0 0 24px; padding-left: 24px; font-size: 14px; line-height: 1.8; color: #71717a;">
+          <li>Review each section of your draft carefully</li>
+          <li>Download the PDF for your records</li>
+          <li>Consider having a patent attorney review before filing</li>
+          <li>File with the USPTO within 12 months to maintain priority</li>
+        </ol>
+        
+        <p style="margin: 0; font-size: 12px; color: #a1a1aa;">
+          This is an AI-generated draft intended as a starting point. We strongly recommend professional review before filing.
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 24px; text-align: center;">
+        <p style="margin: 0; font-size: 12px; color: #a1a1aa;">
+          IPGenie™ by IP Sentinel • Provisional Patent Generation
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}

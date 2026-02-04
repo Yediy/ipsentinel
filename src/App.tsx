@@ -41,6 +41,7 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import RefundPolicy from "./pages/RefundPolicy";
 import DataProcessingAgreement from "./pages/DataProcessingAgreement";
+import PatentResult from "./pages/PatentResult";
 
 const queryClient = new QueryClient();
 
@@ -226,6 +227,20 @@ const AppContent = () => {
             
             <Route path="/payment-success" element={<PaymentSuccess />} />
             <Route path="/payment-canceled" element={<PaymentCanceled />} />
+            <Route path="/patent/:filingId" element={
+              <AuthGuard>
+                <LegalConsentGate>
+                  <SidebarProvider>
+                    <div className="flex min-h-screen w-full">
+                      <AppSidebar />
+                      <main className="flex-1 p-6 bg-background">
+                        <PatentResult />
+                      </main>
+                    </div>
+                  </SidebarProvider>
+                </LegalConsentGate>
+              </AuthGuard>
+            } />
             
             {/* Legacy route redirect */}
             <Route path="/old-dashboard" element={<Dashboard />} />
