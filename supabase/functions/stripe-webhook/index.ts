@@ -81,25 +81,55 @@ serve(async (req: Request) => {
         const payment_status = session.payment_status ?? null;
         const metadata = session.metadata ?? {};
         const filing_id = metadata["filing_id"] ?? null;
+        const intake_id = metadata["intake_id"] ?? null;
+        const paymentType = metadata["type"] ?? "standard";
+
         if (!filing_id) break;
 
         await supabase.from("payments").upsert({
           session_id,
           filing_id,
           status: payment_status,
-          amount: amount_total,
+          amount_cents: amount_total,
           currency
         }, { onConflict: "session_id" });
 
         await supabase.from("filings")
-          .update({ status: "paid" })
+          .update({ status: "paid", payment_status: "paid" })
           .eq("id", filing_id);
+
+        // Update intake status if this is a provisional patent payment
+        if (paymentType === "provisional_patent" && intake_id) {
+          await supabase.from("intakes")
+            .update({ status: "paid" })
+            .eq("id", intake_id);
+
+          // Trigger document generation
+          try {
+            const baseUrl = Deno.env.get("SUPABASE_URL") || "";
+            const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
+            
+            await fetch(`${baseUrl}/functions/v1/generate-provisional`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${anonKey}`
+              },
+              body: JSON.stringify({ intake_id, filing_id })
+            });
+            console.log("Triggered provisional generation for:", filing_id);
+          } catch (genErr) {
+            console.error("Failed to trigger generation:", genErr);
+          }
+        }
 
         await supabase.rpc("notify_user", {
           p_user_id: null,
           p_filing_id: filing_id,
           p_subject: "Payment received",
-          p_body: "Your payment was received. We're generating your filing package now."
+          p_body: paymentType === "provisional_patent" 
+            ? "Your payment was received. We're generating your provisional patent draft now."
+            : "Your payment was received. We're generating your filing package now."
         });
 
         break;
