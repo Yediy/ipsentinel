@@ -1,5 +1,4 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -7,64 +6,23 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   FileText, Download, ArrowLeft, CheckCircle, 
-  Clock, AlertCircle, Copy, Mail 
+  Clock, AlertCircle, Mail, RefreshCw
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-
-interface PatentDraft {
-  id: string;
-  title: string;
-  abstract: string | null;
-  background: string | null;
-  summary: string | null;
-  detailed_description: string | null;
-  claims: string | null;
-  status: string;
-  generated_content: {
-    figure_descriptions?: string;
-    generated_at?: string;
-    tier?: string;
-  } | null;
-  created_at: string;
-}
+import { useState } from "react";
+import { usePatentRealtime } from "@/hooks/usePatentRealtime";
+import { PatentSectionEditor } from "@/components/patent/PatentSectionEditor";
+import { PatentGenerationProgress } from "@/components/patent/PatentGenerationProgress";
 
 const PatentResult = () => {
   const { filingId } = useParams<{ filingId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [patent, setPatent] = useState<PatentDraft | null>(null);
-  const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [activeTab, setActiveTab] = useState("abstract");
 
-  useEffect(() => {
-    if (filingId) {
-      fetchPatent();
-    }
-  }, [filingId]);
-
-  const fetchPatent = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('filings')
-        .select('*')
-        .eq('id', filingId)
-        .single();
-
-      if (error) throw error;
-      setPatent(data as PatentDraft);
-    } catch (error) {
-      console.error('Error fetching patent:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load patent draft",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { patent, loading, updateSection, saving, refetch } = usePatentRealtime(filingId);
 
   const handleDownloadPDF = async () => {
     if (!filingId) return;
@@ -96,12 +54,8 @@ const PatentResult = () => {
     }
   };
 
-  const copyToClipboard = (text: string, section: string) => {
-    navigator.clipboard.writeText(text);
-    toast({
-      title: "Copied",
-      description: `${section} copied to clipboard`
-    });
+  const handleSaveSection = async (sectionKey: string, content: string) => {
+    await updateSection(sectionKey, content);
   };
 
   if (loading) {
@@ -146,7 +100,7 @@ const PatentResult = () => {
     { key: 'summary', label: 'Summary', content: patent.summary },
     { key: 'detailed_description', label: 'Detailed Description', content: patent.detailed_description },
     { key: 'claims', label: 'Claims', content: patent.claims },
-    { key: 'figures', label: 'Figures', content: patent.generated_content?.figure_descriptions },
+    { key: 'figures', label: 'Figures', content: patent.generated_content?.figure_descriptions || null },
   ];
 
   return (
@@ -206,16 +160,25 @@ const PatentResult = () => {
               <Mail className="w-4 h-4 mr-2" />
               Email Draft
             </Button>
+            <Button variant="ghost" onClick={refetch} disabled={loading}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
           </div>
           {patent.generated_content?.generated_at && (
             <p className="text-sm text-muted-foreground mt-4">
               Generated on {new Date(patent.generated_content.generated_at).toLocaleString()}
             </p>
           )}
+          {saving && (
+            <p className="text-sm text-primary mt-2">Saving changes...</p>
+          )}
         </CardContent>
       </Card>
 
-      {isGenerating ? (
+      <PatentGenerationProgress status={patent.status} sections={sections} />
+
+      {isGenerating && sections.every(s => !s.content) ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4 animate-spin" />
@@ -237,40 +200,29 @@ const PatentResult = () => {
                   <TabsTrigger 
                     key={section.key} 
                     value={section.key}
-                    disabled={!section.content}
+                    className="relative"
                   >
                     {section.label}
+                    {section.content && (
+                      <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full" />
+                    )}
                   </TabsTrigger>
                 ))}
               </TabsList>
               
               {sections.map((section) => (
                 <TabsContent key={section.key} value={section.key}>
-                  <div className="relative">
-                    {section.content && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="absolute top-0 right-0"
-                        onClick={() => copyToClipboard(section.content!, section.label)}
-                      >
-                        <Copy className="w-4 h-4 mr-1" />
-                        Copy
-                      </Button>
+                  <PatentSectionEditor
+                    title={section.label}
+                    content={section.content}
+                    sectionKey={section.key === 'figures' ? 'generated_content' : section.key}
+                    onSave={(content) => handleSaveSection(
+                      section.key === 'figures' ? 'generated_content' : section.key, 
+                      content
                     )}
-                    <div className="prose prose-sm max-w-none dark:prose-invert">
-                      <h3 className="text-lg font-semibold mb-4">{section.label}</h3>
-                      {section.content ? (
-                        <div className="whitespace-pre-wrap bg-muted/50 p-4 rounded-lg">
-                          {section.content}
-                        </div>
-                      ) : (
-                        <p className="text-muted-foreground italic">
-                          This section has not been generated yet.
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                    saving={saving}
+                    isReady={isReady}
+                  />
                 </TabsContent>
               ))}
             </Tabs>
