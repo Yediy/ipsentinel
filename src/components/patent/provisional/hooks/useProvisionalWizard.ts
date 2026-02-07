@@ -118,7 +118,8 @@ export function useProvisionalWizard({ filingId, onComplete }: UseProvisionalWiz
       // Cast to Json type for Supabase compatibility
       const answersJson = JSON.parse(JSON.stringify(currentAnswers));
       const deleteAfter = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
-      const statusValue = score.overall >= MIN_QUALITY_SCORE ? 'ready_for_payment' : 'draft';
+      // Status stays 'draft' during autosave — only the score endpoint can transition to ready_for_payment
+      const statusValue = 'draft';
 
       if (intakeId) {
         const { error } = await supabase

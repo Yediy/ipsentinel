@@ -2,13 +2,14 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.23.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
-import { rateLimitMiddleware, RateLimitPresets, createRateLimitHeaders } from '../_shared/rate-limiter.ts';
+import { rateLimitMiddleware, RateLimitPresets } from '../_shared/rate-limiter.ts';
 import { captureException } from '../_shared/sentry.ts';
 
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 const STRIPE_WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE")!;
+const SUPABASE_SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ||
+  Deno.env.get("SUPABASE_SERVICE_ROLE")!;
 const CORS_ORIGINS = (Deno.env.get("CORS_ORIGINS") ?? "").split(",").map(s => s.trim()).filter(Boolean);
 
 const stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2024-11-20.acacia" });
@@ -41,9 +42,7 @@ serve(async (req: Request) => {
 
   // Rate limiting for webhook protection
   const rateLimitResponse = rateLimitMiddleware(req, RateLimitPresets.webhook);
-  if (rateLimitResponse) {
-    return cors(rateLimitResponse, req);
-  }
+  if (rateLimitResponse) return cors(rateLimitResponse, req);
 
   try {
     const rawBody = await req.text();
@@ -61,6 +60,7 @@ serve(async (req: Request) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE, { auth: { persistSession: false } });
 
+    // ── Idempotency check ─────────────────────────────────────────────
     const { data: existing, error: idErr } = await supabase
       .from("webhook_events")
       .select("id")
@@ -86,50 +86,70 @@ serve(async (req: Request) => {
 
         if (!filing_id) break;
 
+        // ── Upsert payment record ──────────────────────────────────────
         await supabase.from("payments").upsert({
           session_id,
           filing_id,
+          intake_id: intake_id || null,
           status: payment_status,
           amount_cents: amount_total,
-          currency
+          currency,
         }, { onConflict: "session_id" });
 
+        // ── Update filing status ───────────────────────────────────────
         await supabase.from("filings")
           .update({ status: "paid", payment_status: "paid" })
           .eq("id", filing_id);
 
-        // Update intake status if this is a provisional patent payment
-        if (paymentType === "provisional_patent" && intake_id) {
+        // ── Intake status machine: ready_for_payment → paid → generating
+        if (intake_id) {
+          // Transition intake: ready_for_payment → paid
           await supabase.from("intakes")
             .update({ status: "paid" })
-            .eq("id", intake_id);
+            .eq("id", intake_id)
+            .in("status", ["ready_for_payment"]);
 
-          // Trigger document generation
-          try {
-            const baseUrl = Deno.env.get("SUPABASE_URL") || "";
-            const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
-            
-            await fetch(`${baseUrl}/functions/v1/generate-provisional`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${anonKey}`
-              },
-              body: JSON.stringify({ intake_id, filing_id })
+          if (paymentType === "provisional_patent") {
+            // Transition intake: paid → generating (enqueue job)
+            await supabase.from("intakes")
+              .update({ status: "generating" })
+              .eq("id", intake_id)
+              .eq("status", "paid");
+
+            // Create generation job
+            await supabase.from("generation_jobs").insert({
+              intake_id,
+              status: "queued",
+              attempts: 0,
             });
-            console.log("Triggered provisional generation for:", filing_id);
-          } catch (genErr) {
-            console.error("Failed to trigger generation:", genErr);
+
+            // Trigger document generation
+            try {
+              const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
+              await fetch(`${SUPABASE_URL}/functions/v1/generate-provisional`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${anonKey}`,
+                },
+                body: JSON.stringify({ intake_id, filing_id }),
+              });
+              console.log("Triggered provisional generation for:", filing_id);
+            } catch (genErr) {
+              console.error("Failed to trigger generation:", genErr);
+            }
           }
         }
 
+        // ── Notify user ────────────────────────────────────────────────
         await supabase.rpc("notify_user", {
           p_user_id: null,
           p_filing_id: filing_id,
           p_subject: "Payment received",
-          p_body: paymentType === "provisional_patent" 
-            ? "Your payment was received. We're generating your provisional patent draft now."
-            : "Your payment was received. We're generating your filing package now."
+          p_body:
+            paymentType === "provisional_patent"
+              ? "Your payment was received. We're generating your provisional patent draft now."
+              : "Your payment was received. We're generating your filing package now.",
         });
 
         break;
@@ -137,10 +157,9 @@ serve(async (req: Request) => {
 
       case "checkout.session.expired": {
         const session = event.data.object as Stripe.Checkout.Session;
-        const session_id = session.id;
         await supabase.from("payments")
           .update({ status: "expired" })
-          .eq("session_id", session_id);
+          .eq("session_id", session.id);
         break;
       }
 
