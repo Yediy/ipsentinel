@@ -285,28 +285,37 @@ export type Database = {
         Row: {
           created_at: string | null
           delete_after: string | null
+          doc_type: string | null
           filing_id: string
           id: string
+          intake_id: string | null
           kind: Database["public"]["Enums"]["doc_kind"]
           sha256: string | null
+          storage_key: string | null
           url: string
         }
         Insert: {
           created_at?: string | null
           delete_after?: string | null
+          doc_type?: string | null
           filing_id: string
           id?: string
+          intake_id?: string | null
           kind?: Database["public"]["Enums"]["doc_kind"]
           sha256?: string | null
+          storage_key?: string | null
           url?: string
         }
         Update: {
           created_at?: string | null
           delete_after?: string | null
+          doc_type?: string | null
           filing_id?: string
           id?: string
+          intake_id?: string | null
           kind?: Database["public"]["Enums"]["doc_kind"]
           sha256?: string | null
+          storage_key?: string | null
           url?: string
         }
         Relationships: [
@@ -315,6 +324,13 @@ export type Database = {
             columns: ["filing_id"]
             isOneToOne: false
             referencedRelation: "filings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_intake_id_fkey"
+            columns: ["intake_id"]
+            isOneToOne: false
+            referencedRelation: "intakes"
             referencedColumns: ["id"]
           },
         ]
@@ -737,6 +753,7 @@ export type Database = {
           currency: string
           filing_id: string
           id: string
+          intake_id: string | null
           provider: string
           raw_payload: Json | null
           session_id: string | null
@@ -749,6 +766,7 @@ export type Database = {
           currency?: string
           filing_id: string
           id?: string
+          intake_id?: string | null
           provider?: string
           raw_payload?: Json | null
           session_id?: string | null
@@ -761,6 +779,7 @@ export type Database = {
           currency?: string
           filing_id?: string
           id?: string
+          intake_id?: string | null
           provider?: string
           raw_payload?: Json | null
           session_id?: string | null
@@ -773,6 +792,13 @@ export type Database = {
             columns: ["filing_id"]
             isOneToOne: false
             referencedRelation: "filings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_intake_id_fkey"
+            columns: ["intake_id"]
+            isOneToOne: false
+            referencedRelation: "intakes"
             referencedColumns: ["id"]
           },
         ]
