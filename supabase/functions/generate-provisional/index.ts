@@ -219,9 +219,14 @@ serve(async (req) => {
       upsert: true,
     });
 
+    const checklistBuffer = await generateChecklistPDF(answers, generatedContent);
+    const checklistKey = storageKey(userId, intakeId, "filing_checklist", "pdf");
+    await supabase.storage.from("filings").upload(checklistKey, checklistBuffer, { contentType: "application/pdf", upsert: true });
+
     await supabase.from("documents").insert([
       { filing_id: filingId, intake_id: intakeId, kind: "pdf" as const, doc_type: "spec_pdf", storage_key: pdfKey, url: pdfKey, delete_after: deleteAfter },
       { filing_id: filingId, intake_id: intakeId, kind: "docx" as const, doc_type: "spec_docx", storage_key: docxKey, url: docxKey, delete_after: deleteAfter },
+      { filing_id: filingId, intake_id: intakeId, kind: "pdf" as const, doc_type: "filing_checklist", storage_key: checklistKey, url: checklistKey, delete_after: deleteAfter },
     ]);
 
     await supabase.from("intakes").update({ status: "ready" }).eq("id", intakeId);
@@ -588,6 +593,139 @@ async function generateDocx(
 </Properties>`);
 
   const arrayBuffer = await zip.generateAsync({ type: "uint8array", compression: "DEFLATE" });
+  return new Uint8Array(arrayBuffer);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Filing Checklist PDF — Pre-filing guidance and requirements
+// ═══════════════════════════════════════════════════════════════════════
+async function generateChecklistPDF(
+  answers: IntakeAnswers,
+  content: Record<string, string>
+): Promise<Uint8Array> {
+  const pdf = new PDFDocument({ size: "A4", margin: 50 });
+
+  return new Promise((resolve, reject) => {
+    const chunks: Uint8Array[] = [];
+    pdf.on("data", (chunk: Uint8Array) => chunks.push(chunk));
+    pdf.on("end", () => {
+      const buffer = new Uint8Array(chunks.reduce((a, c) => a + c.length, 0));
+      let off = 0;
+      for (const c of chunks) { buffer.set(c, off); off += c.length; }
+      resolve(buffer);
+    });
+    pdf.on("error", reject);
+
+    const PAGE_W = 595.28;
+    const PAGE_H = 841.89;
+    const MARGIN = 50;
+    const generatedDate = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+
+    // Cover
+    pdf.moveDown(5);
+    pdf.fontSize(10).font("Helvetica").fillColor("#999999").text("PROVISIONAL PATENT APPLICATION", { align: "center" });
+    pdf.moveDown(1);
+    pdf.fontSize(24).font("Helvetica-Bold").fillColor("#1a1a2e").text("Filing Checklist", { align: "center" });
+    pdf.moveDown(0.5);
+    pdf.moveTo(MARGIN + 80, pdf.y).lineTo(PAGE_W - MARGIN - 80, pdf.y).strokeColor("#2563eb").lineWidth(2).stroke();
+    pdf.moveDown(1.5);
+    pdf.fontSize(11).font("Helvetica").fillColor("#555555").text(`Invention: ${answers.title || "Untitled"}`, { align: "center" });
+    pdf.moveDown(0.3);
+    pdf.text(`Generated: ${generatedDate}`, { align: "center" });
+    pdf.moveDown(0.3);
+    pdf.text("IP Sentinel™ — Provisional Patent Filing Guide", { align: "center" });
+    pdf.moveDown(4);
+    pdf.fontSize(9).fillColor("#999999").text("Complete these steps before submitting your provisional application.", { align: "center" });
+
+    // Content sections
+    pdf.addPage();
+    pdf.fontSize(18).font("Helvetica-Bold").fillColor("#1a1a2e").text("Pre-Filing Checklist");
+    pdf.moveDown(0.8);
+
+    const checklist = [
+      { item: "Complete all answers", details: "Ensure all 18 wizard questions are answered thoroughly." },
+      { item: "Quality score ≥ 72%", details: "Click 'Score & Check Quality' to verify your submission meets USPTO standards." },
+      { item: "Review the specification PDF", details: "Read the generated spec for accuracy, technical clarity, and completeness." },
+      { item: "Verify all claims", details: "Review independent and dependent claims for scope and proper dependencies." },
+      { item: "Check figure descriptions", details: "Confirm all referenced figures are properly described and labeled." },
+      { item: "Abstract compliance", details: "Ensure abstract is 250 words or fewer and concise." },
+      { item: "Title verification", details: "Confirm the invention title is descriptive and follows USPTO conventions." },
+      { item: "Prior art review", details: "List any known similar products or patents in the provided field." },
+      { item: "Component accuracy", details: "Verify all listed components and steps are accurately described." },
+      { item: "Payment confirmation", details: "Proceed to payment via Stripe using the secure checkout flow." },
+    ];
+
+    for (const check of checklist) {
+      pdf.fontSize(11).font("Helvetica-Bold").fillColor("#2563eb").text(`☑ ${check.item}`);
+      pdf.fontSize(10).font("Helvetica").fillColor("#666666").text(check.details, { lineGap: 2 });
+      pdf.moveDown(0.6);
+    }
+
+    // USPTO Requirements
+    pdf.addPage();
+    pdf.fontSize(18).font("Helvetica-Bold").fillColor("#1a1a2e").text("USPTO Provisional Requirements");
+    pdf.moveDown(0.8);
+
+    const usptoreqs = [
+      { title: "Specification", text: "Your specification PDF must include: abstract, background, summary, detailed description, and claims. All provided." },
+      { title: "Drawings (Optional)", text: "Figure descriptions are included. You may submit drawings or sketches separately to the USPTO." },
+      { title: "Filing Fee", text: "Micro-entity: $65 | Small-entity: $260 | Large-entity: $520. Payment processed via Stripe." },
+      { title: "Cover Sheet", text: "Submit Form SB/16 with your application. Download from USPTO.gov." },
+      { title: "Assignment (If Applicable)", text: "If assigning rights, submit Form SB/17 or equivalent assignment agreement." },
+    ];
+
+    for (const req of usptoreqs) {
+      pdf.fontSize(12).font("Helvetica-Bold").fillColor("#1a1a2e").text(req.title);
+      pdf.fontSize(10).font("Helvetica").fillColor("#555555").text(req.text, { lineGap: 2 });
+      pdf.moveDown(0.8);
+    }
+
+    // Next Steps
+    pdf.addPage();
+    pdf.fontSize(18).font("Helvetica-Bold").fillColor("#1a1a2e").text("Next Steps After Payment");
+    pdf.moveDown(0.8);
+
+    const nextsteps = [
+      "1. Download both PDF and DOCX specification files from your dashboard.",
+      "2. Download and complete Form SB/16 (cover sheet) from USPTO.gov.",
+      "3. Assemble your filing package in the order specified by the USPTO.",
+      "4. Submit via EFS-Web at https://www.uspto.gov/efw (electronic filing recommended).",
+      "5. Monitor your application status on Patents PAIR at https://portal.uspto.gov/pair.",
+      "6. Retain copies of all submitted documents for your records.",
+      "7. Consider consulting a patent attorney for non-provisional filing strategy.",
+      "8. Your filing receipt will confirm priority date — critical for future international filings.",
+    ];
+
+    for (const step of nextsteps) {
+      pdf.fontSize(11).font("Helvetica").fillColor("#333333").text(step, { lineGap: 3 });
+      pdf.moveDown(0.4);
+    }
+
+    // Footer & watermarks
+    const pageCount = pdf.bufferedPageRange().count;
+    for (let i = 0; i < pageCount; i++) {
+      pdf.switchToPage(i);
+
+      // Watermark
+      pdf.save();
+      pdf.translate(PAGE_W / 2, PAGE_H / 2);
+      pdf.rotate(-45);
+      pdf.fontSize(60).font("Helvetica-Bold").fillColor("#f0f0f0").opacity(0.15)
+        .text("IP SENTINEL", -200, -30, { align: "center" });
+      pdf.restore();
+      pdf.opacity(1);
+
+      // Footer
+      const footerY = PAGE_H - 35;
+      pdf.moveTo(MARGIN, footerY - 5).lineTo(PAGE_W - MARGIN, footerY - 5).strokeColor("#e4e4e7").lineWidth(0.5).stroke();
+      pdf.fontSize(8).font("Helvetica").fillColor("#999999");
+      pdf.text("IP Sentinel™ — Filing Checklist", MARGIN, footerY, { width: 250 });
+      pdf.text(`Page ${i + 1} of ${pageCount}`, PAGE_W - MARGIN - 60, footerY, { width: 60, align: "right" });
+    }
+
+    pdf.end();
+  });
+}
   return arrayBuffer;
 }
 
