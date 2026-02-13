@@ -726,8 +726,6 @@ async function generateChecklistPDF(
     pdf.end();
   });
 }
-  return arrayBuffer;
-}
 
 function esc(str: string): string {
   return str
