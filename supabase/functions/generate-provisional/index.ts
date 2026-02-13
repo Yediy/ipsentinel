@@ -352,6 +352,118 @@ async function generatePDF(
       });
     }
 
+    // ── Claim Comparison Chart ──────────────────────────────────────
+    if (content.claims) {
+      pdf.addPage();
+      pdf.fontSize(16).font("Helvetica-Bold").fillColor("#1a1a2e").text("Claim Structure Chart");
+      pdf.moveDown(0.3);
+      pdf.moveTo(MARGIN, pdf.y).lineTo(PAGE_W - MARGIN, pdf.y).strokeColor("#2563eb").lineWidth(1.5).stroke();
+      pdf.moveDown(0.6);
+
+      pdf.fontSize(9).font("Helvetica").fillColor("#666666").text(
+        "This chart visualizes the hierarchy of independent and dependent claims, showing cross-references and scope relationships.",
+        { lineGap: 2 }
+      );
+      pdf.moveDown(0.8);
+
+      // Parse claims into structured data
+      const claimLines = content.claims.split(/\n+/).filter((l: string) => l.trim());
+      interface ParsedClaim { num: number; text: string; dependsOn: number | null; isIndependent: boolean; }
+      const parsedClaims: ParsedClaim[] = [];
+
+      for (const line of claimLines) {
+        const numMatch = line.match(/^\s*(?:Claim\s+)?(\d+)[\.\:\)]/i);
+        if (!numMatch) continue;
+        const num = parseInt(numMatch[1]);
+        const depMatch = line.match(/(?:claim|claims?)\s+(\d+)/i);
+        const dependsOn = depMatch ? parseInt(depMatch[1]) : null;
+        const isIndependent = !dependsOn || dependsOn === num;
+        parsedClaims.push({ num, text: line.trim(), dependsOn: isIndependent ? null : dependsOn, isIndependent });
+      }
+
+      if (parsedClaims.length === 0) {
+        // Fallback: just list claims as numbered items
+        pdf.fontSize(10).font("Helvetica").fillColor("#333333").text(content.claims, { lineGap: 3 });
+      } else {
+        const COL_NUM = MARGIN;
+        const COL_TYPE = MARGIN + 45;
+        const COL_REF = MARGIN + 145;
+        const COL_DESC = MARGIN + 220;
+        const TABLE_W = PAGE_W - 2 * MARGIN;
+
+        // Table header
+        const headerY = pdf.y;
+        pdf.rect(MARGIN, headerY, TABLE_W, 22).fillAndStroke("#1a1a2e", "#1a1a2e");
+        pdf.fontSize(9).font("Helvetica-Bold").fillColor("#ffffff");
+        pdf.text("#", COL_NUM + 6, headerY + 6, { width: 35 });
+        pdf.text("Type", COL_TYPE + 6, headerY + 6, { width: 90 });
+        pdf.text("Depends On", COL_REF + 6, headerY + 6, { width: 70 });
+        pdf.text("Summary", COL_DESC + 6, headerY + 6, { width: TABLE_W - 226 });
+        pdf.y = headerY + 22;
+
+        // Table rows
+        for (let i = 0; i < parsedClaims.length; i++) {
+          const claim = parsedClaims[i];
+          const rowY = pdf.y;
+          const indent = claim.isIndependent ? 0 : 12;
+          const rowH = 20;
+
+          // Check page break
+          if (rowY + rowH > PAGE_H - 60) {
+            pdf.addPage();
+          }
+
+          const currentY = pdf.y;
+
+          // Alternate row background
+          if (i % 2 === 0) {
+            pdf.rect(MARGIN, currentY, TABLE_W, rowH).fill("#f8f9fa");
+          }
+
+          // Row border
+          pdf.moveTo(MARGIN, currentY + rowH).lineTo(MARGIN + TABLE_W, currentY + rowH).strokeColor("#e4e4e7").lineWidth(0.5).stroke();
+
+          // Claim number
+          pdf.fontSize(9).font(claim.isIndependent ? "Helvetica-Bold" : "Helvetica")
+            .fillColor(claim.isIndependent ? "#2563eb" : "#555555");
+          pdf.text(`${claim.num}`, COL_NUM + 6 + indent, currentY + 5, { width: 35 - indent });
+
+          // Type badge
+          pdf.fontSize(8).font("Helvetica-Bold")
+            .fillColor(claim.isIndependent ? "#16a34a" : "#9333ea");
+          pdf.text(claim.isIndependent ? "Independent" : "Dependent", COL_TYPE + 6, currentY + 5, { width: 90 });
+
+          // Depends on
+          pdf.fontSize(9).font("Helvetica").fillColor("#666666");
+          pdf.text(claim.dependsOn ? `Claim ${claim.dependsOn}` : "—", COL_REF + 6, currentY + 5, { width: 70 });
+
+          // Summary (truncated)
+          const summary = claim.text.replace(/^\s*(?:Claim\s+)?\d+[\.\:\)]\s*/i, "").slice(0, 80);
+          pdf.fontSize(8).font("Helvetica").fillColor("#333333");
+          pdf.text(summary + (claim.text.length > 80 ? "…" : ""), COL_DESC + 6, currentY + 5, { width: TABLE_W - 226 });
+
+          pdf.y = currentY + rowH;
+        }
+
+        // Legend
+        pdf.moveDown(1);
+        pdf.fontSize(9).font("Helvetica-Bold").fillColor("#1a1a2e").text("Legend:");
+        pdf.moveDown(0.3);
+        pdf.fontSize(8).font("Helvetica");
+        pdf.fillColor("#16a34a").text("■ Independent Claim", { continued: true });
+        pdf.fillColor("#333333").text("  —  Broad scope, standalone protection", { continued: false });
+        pdf.fillColor("#9333ea").text("■ Dependent Claim", { continued: true });
+        pdf.fillColor("#333333").text("  —  Narrows scope, references a parent claim", { continued: false });
+
+        // Stats summary
+        pdf.moveDown(0.8);
+        const indCount = parsedClaims.filter(c => c.isIndependent).length;
+        const depCount = parsedClaims.filter(c => !c.isIndependent).length;
+        pdf.fontSize(10).font("Helvetica-Bold").fillColor("#1a1a2e")
+          .text(`Total: ${parsedClaims.length} claims (${indCount} independent, ${depCount} dependent)`);
+      }
+    }
+
     // ── Post-render: add watermarks, footers, page numbers ─────────
     const pageCount = pdf.bufferedPageRange().count;
     for (let i = 0; i < pageCount; i++) {
