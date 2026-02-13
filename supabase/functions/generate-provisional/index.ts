@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import PDFDocument from "https://esm.sh/pdfkit@0.13.0";
+import * as JSZip from "https://esm.sh/jszip@3.10.1";
 import { getValidatedCorsHeaders, createCorsPreflightResponse } from "../_shared/cors-validator.ts";
 import { captureException } from "../_shared/sentry.ts";
 
@@ -119,6 +120,16 @@ Generate brief descriptions and prompts for creating each figure type. Include w
   return data.choices?.[0]?.message?.content || "";
 }
 
+// ── Section metadata ────────────────────────────────────────────────────
+const SECTION_META = [
+  { key: "abstract", label: "Abstract" },
+  { key: "background", label: "Background of the Invention" },
+  { key: "summary", label: "Summary of the Invention" },
+  { key: "detailed_description", label: "Detailed Description" },
+  { key: "claims", label: "Claims" },
+  { key: "figure_descriptions", label: "Figure Descriptions" },
+];
+
 // ── Main handler ────────────────────────────────────────────────────────
 serve(async (req) => {
   const origin = req.headers.get("origin");
@@ -143,35 +154,22 @@ serve(async (req) => {
       );
     }
 
-    // Get intake data
     const { data: intake, error: intakeError } = await supabase
-      .from("intakes")
-      .select("*")
-      .eq("id", intakeId)
-      .single();
+      .from("intakes").select("*").eq("id", intakeId).single();
 
     if (intakeError || !intake) throw new Error("Intake not found");
 
-    // ── Transition: paid/generating → generating ──────────────────────
     await supabase.from("intakes").update({ status: "generating" }).eq("id", intakeId);
 
-    // Create / update generation job
     const { data: job } = await supabase
       .from("generation_jobs")
-      .upsert(
-        { intake_id: intakeId, status: "running", attempts: 1 },
-        { onConflict: "intake_id" }
-      )
-      .select("id")
-      .single();
+      .upsert({ intake_id: intakeId, status: "running", attempts: 1 }, { onConflict: "intake_id" })
+      .select("id").single();
 
     const answers = intake.answers_json as IntakeAnswers;
 
     // ── Generate all sections ─────────────────────────────────────────
-    const sectionKeys = [
-      "title", "abstract", "background", "summary",
-      "detailed_description", "claims", "figure_descriptions",
-    ];
+    const sectionKeys = ["title", "abstract", "background", "summary", "detailed_description", "claims", "figure_descriptions"];
     const generatedContent: Record<string, string> = {};
 
     for (const section of sectionKeys) {
@@ -184,7 +182,7 @@ serve(async (req) => {
       }
     }
 
-    // ── Update filing with generated content ──────────────────────────
+    // ── Update filing ─────────────────────────────────────────────────
     const { error: updateError } = await supabase
       .from("filings")
       .update({
@@ -205,149 +203,68 @@ serve(async (req) => {
 
     if (updateError) throw updateError;
 
-    // ── Generate PDF and DOCX files ───────────────────────────────────────
+    // ── Generate documents ────────────────────────────────────────────
     const userId = intake.user_id;
     const deleteAfter = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
+    const docTitle = answers.title || generatedContent.title || "Patent Specification";
 
-    // Build spec text for documents
-    const specText = [
-      `TITLE: ${generatedContent.title || answers.title}`,
-      "",
-      "ABSTRACT",
-      generatedContent.abstract,
-      "",
-      "BACKGROUND",
-      generatedContent.background,
-      "",
-      "SUMMARY",
-      generatedContent.summary,
-      "",
-      "DETAILED DESCRIPTION",
-      generatedContent.detailed_description,
-      "",
-      "CLAIMS",
-      generatedContent.claims,
-      "",
-      "FIGURE DESCRIPTIONS",
-      generatedContent.figure_descriptions,
-    ].join("\n");
-
-    // Generate PDF using PDFKit
-    const pdfBuffer = await generatePDF(generatedContent, answers.title || "Patent Specification");
+    const pdfBuffer = await generatePDF(generatedContent, docTitle);
     const pdfKey = storageKey(userId, intakeId, "spec_pdf", "pdf");
-    
-    await supabase.storage
-      .from("filings")
-      .upload(pdfKey, pdfBuffer, {
-        contentType: "application/pdf",
-        upsert: true,
-      });
+    await supabase.storage.from("filings").upload(pdfKey, pdfBuffer, { contentType: "application/pdf", upsert: true });
 
-    // Generate DOCX using simple HTML-to-Word conversion
-    const docxBuffer = await generateDocx(generatedContent, answers.title || "Patent Specification");
+    const docxBuffer = await generateDocx(generatedContent, docTitle);
     const docxKey = storageKey(userId, intakeId, "spec_docx", "docx");
-    
-    await supabase.storage
-      .from("filings")
-      .upload(docxKey, docxBuffer, {
-        contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        upsert: true,
-      });
+    await supabase.storage.from("filings").upload(docxKey, docxBuffer, {
+      contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      upsert: true,
+    });
 
-    // Record documents
-    const docRecords = [
-      {
-        filing_id: filingId,
-        intake_id: intakeId,
-        kind: "pdf" as const,
-        doc_type: "spec_pdf",
-        storage_key: pdfKey,
-        url: pdfKey,
-        delete_after: deleteAfter,
-      },
-      {
-        filing_id: filingId,
-        intake_id: intakeId,
-        kind: "docx" as const,
-        doc_type: "spec_docx",
-        storage_key: docxKey,
-        url: docxKey,
-        delete_after: deleteAfter,
-      },
-    ];
+    await supabase.from("documents").insert([
+      { filing_id: filingId, intake_id: intakeId, kind: "pdf" as const, doc_type: "spec_pdf", storage_key: pdfKey, url: pdfKey, delete_after: deleteAfter },
+      { filing_id: filingId, intake_id: intakeId, kind: "docx" as const, doc_type: "spec_docx", storage_key: docxKey, url: docxKey, delete_after: deleteAfter },
+    ]);
 
-    await supabase.from("documents").insert(docRecords);
-
-    // ── Transition: generating → ready ────────────────────────────────
     await supabase.from("intakes").update({ status: "ready" }).eq("id", intakeId);
 
-    // Update generation job
     if (job) {
-      await supabase
-        .from("generation_jobs")
-        .update({ status: "succeeded" })
-        .eq("id", job.id);
+      await supabase.from("generation_jobs").update({ status: "succeeded" }).eq("id", job.id);
     }
 
     // ── Notifications ─────────────────────────────────────────────────
     await supabase.rpc("notify_user", {
-      p_user_id: intake.user_id,
-      p_filing_id: filingId,
-      p_subject: "Patent Draft Ready",
-      p_body: "Your provisional patent draft is ready for review.",
+      p_user_id: intake.user_id, p_filing_id: filingId,
+      p_subject: "Patent Draft Ready", p_body: "Your provisional patent draft is ready for review.",
     });
 
-    // Send email notification
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("email")
-      .eq("user_id", intake.user_id)
-      .single();
-
+    const { data: profile } = await supabase.from("profiles").select("email").eq("user_id", intake.user_id).single();
     if (profile?.email) {
       const viewUrl = `https://ipsentinel.lovable.app/patent/${filingId}`;
       try {
         await fetch(`${SUPABASE_URL}/functions/v1/email-sender`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
-          },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` },
           body: JSON.stringify({
-            to: profile.email,
-            subject: "Your Provisional Patent Draft is Ready!",
-            html: generateEmailHTML(answers.title || generatedContent.title, viewUrl),
-            filing_id: filingId,
-            notification_type: "patent_ready",
+            to: profile.email, subject: "Your Provisional Patent Draft is Ready!",
+            html: generateEmailHTML(docTitle, viewUrl), filing_id: filingId, notification_type: "patent_ready",
           }),
         });
-        console.log("Email notification sent to:", profile.email);
-      } catch (emailError) {
-        console.error("Failed to send email notification:", emailError);
-      }
+      } catch (emailError) { console.error("Email error:", emailError); }
     }
 
     console.log("Generation complete for filing:", filingId);
-
     return new Response(
       JSON.stringify({ success: true, filing_id: filingId }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   } catch (error: any) {
     console.error("Generation error:", error);
-
-    // ── On failure: transition to failed ──────────────────────────────
     if (intakeId) {
       await supabase.from("intakes").update({ status: "failed" }).eq("id", intakeId);
-      await supabase
-        .from("generation_jobs")
+      await supabase.from("generation_jobs")
         .update({ status: "failed", last_error: error?.message || "Unknown error" })
-        .eq("intake_id", intakeId)
-        .eq("status", "running");
+        .eq("intake_id", intakeId).eq("status", "running");
     }
-
     await captureException(error, { tags: { function: "generate-provisional" }, request: req });
-
     return new Response(
       JSON.stringify({ error: error?.message || "Generation failed" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
@@ -355,54 +272,106 @@ serve(async (req) => {
   }
 });
 
-// ── PDF generation helper ────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+// PDF Generation — watermark, footer branding, page numbers, TOC
+// ═══════════════════════════════════════════════════════════════════════
 async function generatePDF(
   content: Record<string, string>,
   title: string
 ): Promise<Uint8Array> {
-  const pdf = new PDFDocument({
-    size: "A4",
-    margin: 50,
-    bufferPages: true
-  });
+  const pdf = new PDFDocument({ size: "A4", margin: 60, bufferPages: true });
 
   return new Promise((resolve, reject) => {
     const chunks: Uint8Array[] = [];
-
     pdf.on("data", (chunk: Uint8Array) => chunks.push(chunk));
     pdf.on("end", () => {
-      const buffer = new Uint8Array(chunks.reduce((acc, chunk) => acc + chunk.length, 0));
-      let offset = 0;
-      for (const chunk of chunks) {
-        buffer.set(chunk, offset);
-        offset += chunk.length;
-      }
+      const buffer = new Uint8Array(chunks.reduce((a, c) => a + c.length, 0));
+      let off = 0;
+      for (const c of chunks) { buffer.set(c, off); off += c.length; }
       resolve(buffer);
     });
     pdf.on("error", reject);
 
-    // Add title
-    pdf.fontSize(24).font("Helvetica-Bold").text(title, { align: "center" });
-    pdf.moveDown(0.5);
-    pdf.moveTo(50, pdf.y).lineTo(550, pdf.y).stroke();
+    const PAGE_W = 595.28; // A4 width in points
+    const PAGE_H = 841.89;
+    const MARGIN = 60;
+    const generatedDate = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+
+    // ── Cover page ──────────────────────────────────────────────────
+    pdf.moveDown(6);
+    pdf.fontSize(10).font("Helvetica").fillColor("#999999").text("PROVISIONAL PATENT APPLICATION", { align: "center" });
     pdf.moveDown(1);
+    pdf.fontSize(26).font("Helvetica-Bold").fillColor("#1a1a2e").text(title, { align: "center" });
+    pdf.moveDown(0.5);
+    pdf.moveTo(MARGIN + 100, pdf.y).lineTo(PAGE_W - MARGIN - 100, pdf.y).strokeColor("#2563eb").lineWidth(2).stroke();
+    pdf.moveDown(1.5);
+    pdf.fontSize(11).font("Helvetica").fillColor("#555555").text(`Generated: ${generatedDate}`, { align: "center" });
+    pdf.moveDown(0.3);
+    pdf.text("IP Sentinel™ — Provisional Patent Generation Service", { align: "center" });
+    pdf.moveDown(4);
+    pdf.fontSize(9).fillColor("#999999").text("CONFIDENTIAL — FOR REVIEW PURPOSES ONLY", { align: "center" });
+    pdf.moveDown(0.3);
+    pdf.text("This AI-generated draft is intended as a starting point. Professional attorney review is strongly recommended before filing.", { align: "center" });
 
-    // Add sections
-    const sections = ["abstract", "background", "summary", "detailed_description", "claims", "figure_descriptions"];
-    const sectionLabels: Record<string, string> = {
-      abstract: "Abstract",
-      background: "Background of the Invention",
-      summary: "Summary of the Invention",
-      detailed_description: "Detailed Description",
-      claims: "Claims",
-      figure_descriptions: "Figure Descriptions"
-    };
+    // ── Table of Contents ───────────────────────────────────────────
+    pdf.addPage();
+    pdf.fontSize(18).font("Helvetica-Bold").fillColor("#1a1a2e").text("Table of Contents", { align: "left" });
+    pdf.moveDown(0.5);
+    pdf.moveTo(MARGIN, pdf.y).lineTo(PAGE_W - MARGIN, pdf.y).strokeColor("#e4e4e7").lineWidth(1).stroke();
+    pdf.moveDown(0.8);
 
-    for (const section of sections) {
-      if (content[section]) {
-        pdf.fontSize(14).font("Helvetica-Bold").text(sectionLabels[section] || section);
-        pdf.fontSize(11).font("Helvetica").text(content[section], { align: "justify" });
-        pdf.moveDown(0.5);
+    let tocPage = 3; // content starts on page 3
+    for (const sec of SECTION_META) {
+      if (content[sec.key]) {
+        pdf.fontSize(12).font("Helvetica").fillColor("#2563eb").text(`${sec.label}`, MARGIN, pdf.y, { continued: false });
+        pdf.moveDown(0.4);
+      }
+    }
+
+    // ── Content pages ───────────────────────────────────────────────
+    for (const sec of SECTION_META) {
+      if (!content[sec.key]) continue;
+      pdf.addPage();
+
+      // Section heading
+      pdf.fontSize(16).font("Helvetica-Bold").fillColor("#1a1a2e").text(sec.label);
+      pdf.moveDown(0.3);
+      pdf.moveTo(MARGIN, pdf.y).lineTo(PAGE_W - MARGIN, pdf.y).strokeColor("#2563eb").lineWidth(1.5).stroke();
+      pdf.moveDown(0.6);
+
+      // Section body
+      pdf.fontSize(11).font("Helvetica").fillColor("#333333").text(content[sec.key], {
+        align: "justify",
+        lineGap: 3,
+        paragraphGap: 6,
+      });
+    }
+
+    // ── Post-render: add watermarks, footers, page numbers ─────────
+    const pageCount = pdf.bufferedPageRange().count;
+    for (let i = 0; i < pageCount; i++) {
+      pdf.switchToPage(i);
+
+      // Diagonal watermark (light)
+      pdf.save();
+      pdf.translate(PAGE_W / 2, PAGE_H / 2);
+      pdf.rotate(-45);
+      pdf.fontSize(60).font("Helvetica-Bold").fillColor("#f0f0f0").opacity(0.15)
+        .text("IP SENTINEL", -200, -30, { align: "center" });
+      pdf.restore();
+      pdf.opacity(1);
+
+      // Footer bar
+      const footerY = PAGE_H - 40;
+      pdf.moveTo(MARGIN, footerY - 5).lineTo(PAGE_W - MARGIN, footerY - 5).strokeColor("#e4e4e7").lineWidth(0.5).stroke();
+
+      pdf.fontSize(8).font("Helvetica").fillColor("#999999");
+      pdf.text("IP Sentinel™ — Provisional Patent Application", MARGIN, footerY, { width: 250 });
+      pdf.text(`Page ${i + 1} of ${pageCount}`, PAGE_W - MARGIN - 80, footerY, { width: 80, align: "right" });
+
+      // Top-right header on content pages (skip cover)
+      if (i > 0) {
+        pdf.fontSize(7).fillColor("#cccccc").text("CONFIDENTIAL DRAFT", PAGE_W - MARGIN - 100, 25, { width: 100, align: "right" });
       }
     }
 
@@ -410,55 +379,219 @@ async function generatePDF(
   });
 }
 
-// ── DOCX generation helper ────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+// DOCX Generation — Proper OOXML ZIP archive with styles
+// ═══════════════════════════════════════════════════════════════════════
 async function generateDocx(
   content: Record<string, string>,
   title: string
 ): Promise<Uint8Array> {
-  // Create a basic DOCX structure
-  const sections = [
-    { key: "abstract", label: "Abstract" },
-    { key: "background", label: "Background of the Invention" },
-    { key: "summary", label: "Summary of the Invention" },
-    { key: "detailed_description", label: "Detailed Description" },
-    { key: "claims", label: "Claims" },
-    { key: "figure_descriptions", label: "Figure Descriptions" }
-  ];
+  const zip = new JSZip.default();
+  const generatedDate = new Date().toISOString();
 
-  let docContent = `<?xml version="1.0" encoding="UTF-8"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-  <w:body>
-    <w:p>
-      <w:pPr><w:pStyle w:val="Title"/></w:pPr>
-      <w:r><w:t>${escapeXml(title)}</w:t></w:r>
-    </w:p>`;
+  // [Content_Types].xml
+  zip.file("[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+  <Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>
+  <Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>
+  <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
+  <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
+</Types>`);
 
-  for (const section of sections) {
-    if (content[section.key]) {
-      docContent += `
-    <w:p>
-      <w:pPr><w:pStyle w:val="Heading1"/></w:pPr>
-      <w:r><w:t>${escapeXml(section.label)}</w:t></w:r>
-    </w:p>`;
-      
-      const paragraphs = content[section.key].split("\n\n");
-      for (const para of paragraphs) {
-        docContent += `
-    <w:p>
-      <w:r><w:t>${escapeXml(para)}</w:t></w:r>
-    </w:p>`;
-      }
+  // _rels/.rels
+  zip.file("_rels/.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
+  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>
+</Relationships>`);
+
+  // word/_rels/document.xml.rels
+  zip.file("word/_rels/document.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/>
+  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>
+</Relationships>`);
+
+  // word/styles.xml — professional patent document styles
+  zip.file("word/styles.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:docDefaults>
+    <w:rPrDefault><w:rPr>
+      <w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>
+      <w:sz w:val="24"/><w:szCs w:val="24"/>
+    </w:rPr></w:rPrDefault>
+    <w:pPrDefault><w:pPr>
+      <w:spacing w:after="120" w:line="276" w:lineRule="auto"/>
+    </w:pPr></w:pPrDefault>
+  </w:docDefaults>
+  <w:style w:type="paragraph" w:styleId="Title">
+    <w:name w:val="Title"/>
+    <w:pPr><w:jc w:val="center"/><w:spacing w:after="240"/></w:pPr>
+    <w:rPr><w:b/><w:sz w:val="48"/><w:szCs w:val="48"/><w:color w:val="1a1a2e"/></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Subtitle">
+    <w:name w:val="Subtitle"/>
+    <w:pPr><w:jc w:val="center"/><w:spacing w:after="120"/></w:pPr>
+    <w:rPr><w:sz w:val="22"/><w:color w:val="555555"/></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Heading1">
+    <w:name w:val="heading 1"/>
+    <w:pPr><w:spacing w:before="360" w:after="120"/><w:keepNext/><w:outlineLvl w:val="0"/></w:pPr>
+    <w:rPr><w:b/><w:sz w:val="32"/><w:szCs w:val="32"/><w:color w:val="1a1a2e"/></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Normal">
+    <w:name w:val="Normal"/>
+    <w:pPr><w:jc w:val="both"/></w:pPr>
+    <w:rPr><w:sz w:val="24"/></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Footer">
+    <w:name w:val="Footer"/>
+    <w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="0"/></w:pPr>
+    <w:rPr><w:sz w:val="16"/><w:color w:val="999999"/></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="TOCHeading">
+    <w:name w:val="TOC Heading"/>
+    <w:pPr><w:spacing w:before="240" w:after="120"/></w:pPr>
+    <w:rPr><w:b/><w:sz w:val="28"/><w:color w:val="1a1a2e"/></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="TOC1">
+    <w:name w:val="toc 1"/>
+    <w:pPr><w:spacing w:before="60" w:after="60"/></w:pPr>
+    <w:rPr><w:sz w:val="22"/><w:color w:val="2563eb"/></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Watermark">
+    <w:name w:val="Watermark"/>
+    <w:pPr><w:jc w:val="center"/></w:pPr>
+    <w:rPr><w:sz w:val="18"/><w:color w:val="CCCCCC"/></w:rPr>
+  </w:style>
+</w:styles>`);
+
+  // word/settings.xml
+  zip.file("word/settings.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:defaultTabStop w:val="720"/>
+  <w:compat><w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/></w:compat>
+</w:settings>`);
+
+  // word/footer1.xml — IP Sentinel branding + page numbers
+  zip.file("word/footer1.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:p>
+    <w:pPr><w:pStyle w:val="Footer"/><w:jc w:val="center"/></w:pPr>
+    <w:r><w:rPr><w:sz w:val="16"/><w:color w:val="999999"/></w:rPr>
+      <w:t xml:space="preserve">IP Sentinel™ — Provisional Patent Application  |  CONFIDENTIAL DRAFT  |  Page </w:t>
+    </w:r>
+    <w:r><w:fldChar w:fldCharType="begin"/></w:r>
+    <w:r><w:instrText> PAGE </w:instrText></w:r>
+    <w:r><w:fldChar w:fldCharType="separate"/></w:r>
+    <w:r><w:t>1</w:t></w:r>
+    <w:r><w:fldChar w:fldCharType="end"/></w:r>
+    <w:r><w:rPr><w:sz w:val="16"/><w:color w:val="999999"/></w:rPr>
+      <w:t xml:space="preserve"> of </w:t>
+    </w:r>
+    <w:r><w:fldChar w:fldCharType="begin"/></w:r>
+    <w:r><w:instrText> NUMPAGES </w:instrText></w:r>
+    <w:r><w:fldChar w:fldCharType="separate"/></w:r>
+    <w:r><w:t>1</w:t></w:r>
+    <w:r><w:fldChar w:fldCharType="end"/></w:r>
+  </w:p>
+</w:ftr>`);
+
+  // word/document.xml — the actual content
+  let body = "";
+
+  // Cover page
+  body += `<w:p><w:pPr><w:pStyle w:val="Watermark"/><w:spacing w:before="2400"/></w:pPr>
+    <w:r><w:rPr><w:sz w:val="20"/><w:color w:val="999999"/></w:rPr><w:t>PROVISIONAL PATENT APPLICATION</w:t></w:r></w:p>`;
+  body += `<w:p><w:pPr><w:pStyle w:val="Title"/></w:pPr>
+    <w:r><w:t>${esc(title)}</w:t></w:r></w:p>`;
+  body += `<w:p><w:pPr><w:pStyle w:val="Subtitle"/></w:pPr>
+    <w:r><w:t>Generated: ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</w:t></w:r></w:p>`;
+  body += `<w:p><w:pPr><w:pStyle w:val="Subtitle"/></w:pPr>
+    <w:r><w:t>IP Sentinel™ — Provisional Patent Generation Service</w:t></w:r></w:p>`;
+  body += `<w:p><w:pPr><w:pStyle w:val="Watermark"/><w:spacing w:before="1200"/></w:pPr>
+    <w:r><w:rPr><w:sz w:val="18"/><w:color w:val="CCCCCC"/></w:rPr><w:t>CONFIDENTIAL — FOR REVIEW PURPOSES ONLY</w:t></w:r></w:p>`;
+  body += `<w:p><w:pPr><w:pStyle w:val="Watermark"/></w:pPr>
+    <w:r><w:rPr><w:sz w:val="16"/><w:color w:val="CCCCCC"/></w:rPr><w:t>This AI-generated draft is intended as a starting point. Professional attorney review is strongly recommended.</w:t></w:r></w:p>`;
+
+  // Page break before TOC
+  body += `<w:p><w:r><w:br w:type="page"/></w:r></w:p>`;
+
+  // Table of Contents
+  body += `<w:p><w:pPr><w:pStyle w:val="TOCHeading"/></w:pPr>
+    <w:r><w:t>Table of Contents</w:t></w:r></w:p>`;
+  for (const sec of SECTION_META) {
+    if (content[sec.key]) {
+      body += `<w:p><w:pPr><w:pStyle w:val="TOC1"/></w:pPr>
+        <w:r><w:t>${esc(sec.label)}</w:t></w:r></w:p>`;
     }
   }
 
-  docContent += `
-  </w:body>
-</w:document>`;
+  // Content sections
+  for (const sec of SECTION_META) {
+    if (!content[sec.key]) continue;
 
-  return new TextEncoder().encode(docContent);
+    // Page break before each section
+    body += `<w:p><w:r><w:br w:type="page"/></w:r></w:p>`;
+
+    // Heading
+    body += `<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr>
+      <w:r><w:t>${esc(sec.label)}</w:t></w:r></w:p>`;
+
+    // Paragraphs
+    const paragraphs = content[sec.key].split(/\n\n+/);
+    for (const para of paragraphs) {
+      const trimmed = para.trim();
+      if (!trimmed) continue;
+      body += `<w:p><w:pPr><w:pStyle w:val="Normal"/></w:pPr>
+        <w:r><w:t xml:space="preserve">${esc(trimmed)}</w:t></w:r></w:p>`;
+    }
+  }
+
+  // Section properties with footer reference
+  const sectionProps = `<w:sectPr>
+    <w:footerReference w:type="default" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="rId3"/>
+    <w:pgSz w:w="12240" w:h="15840"/>
+    <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720"/>
+  </w:sectPr>`;
+
+  zip.file("word/document.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <w:body>${body}${sectionProps}</w:body>
+</w:document>`);
+
+  // docProps/core.xml
+  zip.file("docProps/core.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties"
+                   xmlns:dc="http://purl.org/dc/elements/1.1/"
+                   xmlns:dcterms="http://purl.org/dc/terms/"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <dc:title>${esc(title)}</dc:title>
+  <dc:creator>IP Sentinel™</dc:creator>
+  <dc:description>Provisional Patent Application — AI-Generated Draft</dc:description>
+  <dcterms:created xsi:type="dcterms:W3CDTF">${generatedDate}</dcterms:created>
+  <dcterms:modified xsi:type="dcterms:W3CDTF">${generatedDate}</dcterms:modified>
+</cp:coreProperties>`);
+
+  // docProps/app.xml
+  zip.file("docProps/app.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties">
+  <Application>IP Sentinel™</Application>
+  <Company>IP Sentinel</Company>
+</Properties>`);
+
+  const arrayBuffer = await zip.generateAsync({ type: "uint8array", compression: "DEFLATE" });
+  return arrayBuffer;
 }
 
-function escapeXml(str: string): string {
+function esc(str: string): string {
   return str
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -489,7 +622,7 @@ function generateEmailHTML(title: string, viewUrl: string): string {
       <p style="margin:0 0 16px;font-size:14px;color:#71717a;"><strong>What's Next?</strong></p>
       <ol style="margin:0 0 24px;padding-left:24px;font-size:14px;line-height:1.8;color:#71717a;">
         <li>Review each section of your draft carefully</li>
-        <li>Download the PDF for your records</li>
+        <li>Download the PDF and DOCX for your records</li>
         <li>Consider having a patent attorney review before filing</li>
         <li>File with the USPTO within 12 months to maintain priority</li>
       </ol>
