@@ -10,7 +10,8 @@ import {
   Loader, 
   Clock,
   FileText,
-  CheckCircle
+  CheckCircle,
+  Zap
 } from 'lucide-react';
 import { useProvisionalWizard } from './hooks/useProvisionalWizard';
 import { QuestionRenderer } from './QuestionRenderer';
@@ -58,7 +59,9 @@ export const ProvisionalPatentWizard: React.FC<ProvisionalPatentWizardProps> = (
     goBack,
     goToStep,
     deleteIntake,
-    getFollowupPrompts
+    getFollowupPrompts,
+    scoreIntake,
+    scoringLoading
   } = useProvisionalWizard({ filingId, onComplete });
 
   const currentValue = answers[currentQuestion.id as keyof WizardAnswers];
@@ -223,15 +226,38 @@ export const ProvisionalPatentWizard: React.FC<ProvisionalPatentWizardProps> = (
             followupPrompts={getFollowupPrompts()} 
           />
 
+           {!isQualityPassing && intakeId && (
+            <Card className="border-secondary/50 bg-secondary/5">
+              <CardContent className="p-4">
+                <Button
+                  onClick={scoreIntake}
+                  disabled={scoringLoading || !intakeId}
+                  className="w-full gap-2"
+                  variant="outline"
+                >
+                  {scoringLoading ? (
+                    <Loader className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Zap className="h-4 w-4" />
+                  )}
+                  {scoringLoading ? 'Scoring...' : 'Score & Check Quality'}
+                </Button>
+                <p className="text-xs text-muted-foreground mt-3">
+                  Review your quality score and see specific suggestions to strengthen your application.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
           {isQualityPassing && (
             <Card className="border-primary/50 bg-primary/5">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 text-primary">
                   <CheckCircle className="h-5 w-5" />
-                  <span className="font-medium text-sm">Ready for generation</span>
+                  <span className="font-medium text-sm">Ready for payment</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Your answers meet the quality threshold. Complete all questions to generate your patent draft.
+                  Your answers meet the quality threshold. Proceed to payment to generate your patent draft.
                 </p>
               </CardContent>
             </Card>

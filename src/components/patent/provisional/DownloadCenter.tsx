@@ -9,7 +9,7 @@ import { toast } from "sonner";
 /** Canonical document kind → display label */
 const DOC_LABELS: Record<string, string> = {
   spec_pdf: "Patent Specification (PDF)",
-  spec_docx: "Patent Specification (DOCX)",
+  spec_docx: "Patent Specification (DOCX)", 
   disclosure_summary: "Disclosure Summary",
   provisional_outline: "Provisional Outline",
   figure_prompts: "Figure Descriptions",
@@ -18,6 +18,13 @@ const DOC_LABELS: Record<string, string> = {
   pdf: "Patent Draft (PDF)",
   docx: "Patent Draft (DOCX)",
   xml: "Filing XML",
+};
+
+/** Get icon for document type */
+const getDocIcon = (kind: string) => {
+  if (kind.includes("pdf") || kind === "pdf") return "📄";
+  if (kind.includes("docx") || kind === "docx") return "📝";
+  return "📋";
 };
 
 interface DownloadCenterProps {
@@ -89,10 +96,10 @@ export const DownloadCenter: React.FC<DownloadCenterProps> = ({ intakeId }) => {
             {documents.map((doc) => (
               <li
                 key={doc.id}
-                className="flex items-center justify-between rounded-lg border p-3"
+                className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50 transition"
               >
                 <div className="flex items-center gap-3">
-                  <FileText className="h-5 w-5 text-muted-foreground" />
+                  <span className="text-xl">{getDocIcon(doc.kind)}</span>
                   <div>
                     <p className="text-sm font-medium">
                       {DOC_LABELS[doc.kind] || doc.kind}
@@ -107,13 +114,14 @@ export const DownloadCenter: React.FC<DownloadCenterProps> = ({ intakeId }) => {
                   variant="outline"
                   onClick={() => handleDownload(doc)}
                   disabled={downloading === doc.id}
+                  className="gap-1"
                 >
                   {downloading === doc.id ? (
                     <Loader className="h-4 w-4 animate-spin" />
                   ) : (
                     <Download className="h-4 w-4" />
                   )}
-                  <span className="ml-1">Download</span>
+                  <span className="hidden sm:inline">Download</span>
                 </Button>
               </li>
             ))}

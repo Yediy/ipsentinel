@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useIntakeApi } from '@/hooks/useIntakeApi';
 import { 
   WizardAnswers, 
   IntakeRecord, 
@@ -16,23 +17,30 @@ interface UseProvisionalWizardProps {
 }
 
 export function useProvisionalWizard({ filingId, onComplete }: UseProvisionalWizardProps) {
+  const intakeApi = useIntakeApi();
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<WizardAnswers>({});
   const [intakeId, setIntakeId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [scoringLoading, setScoringLoading] = useState(false);
   const [qualityScore, setQualityScore] = useState<QualityScore | null>(null);
 
   const totalSteps = WIZARD_QUESTIONS.length;
   const currentQuestion = WIZARD_QUESTIONS[step];
   const progress = ((step + 1) / totalSteps) * 100;
 
-  // Load existing intake if available
+  // Auto-save every 30 seconds when answers change
   useEffect(() => {
-    if (filingId) {
-      loadExistingIntake(filingId);
-    }
-  }, [filingId]);
+    if (!intakeId || Object.keys(answers).length === 0) return;
+
+    const autoSaveTimer = setInterval(() => {
+      setSaving(true);
+      intakeApi.autosaveIntake(intakeId, answers as Record<string, unknown>).finally(() => setSaving(false));
+    }, 30000);
+
+    return () => clearInterval(autoSaveTimer);
+  }, [intakeId, answers, intakeApi]);
 
   const loadExistingIntake = async (fId: string) => {
     try {
@@ -47,11 +55,29 @@ export function useProvisionalWizard({ filingId, onComplete }: UseProvisionalWiz
       if (data && !error) {
         setIntakeId(data.id);
         setAnswers((data.answers_json as WizardAnswers) || {});
+        // Restore quality score if available
+        if (data.quality_score) {
+          const score: QualityScore = {
+            overall: data.quality_score,
+            completeness: 0,
+            specificity: 0,
+            embodiments: 0,
+            clarity: 0
+          };
+          setQualityScore(score);
+        }
       }
     } catch (error) {
       // No existing intake, that's fine
     }
   };
+
+  // Load existing intake if available
+  useEffect(() => {
+    if (filingId) {
+      loadExistingIntake(filingId);
+    }
+  }, [filingId]);
 
   const calculateQualityScore = useCallback((currentAnswers: WizardAnswers): QualityScore => {
     // Completeness: % of required fields filled
@@ -270,6 +296,33 @@ export function useProvisionalWizard({ filingId, onComplete }: UseProvisionalWiz
     return prompts;
   }, [qualityScore]);
 
+  const scoreIntake = useCallback(async () => {
+    if (!intakeId) return;
+    setScoringLoading(true);
+    try {
+      const result = await intakeApi.scoreIntake(intakeId);
+      if (result?.score) {
+        const score: QualityScore = {
+          overall: result.score.overall,
+          completeness: result.score.breakdown.completeness,
+          specificity: result.score.breakdown.specificity,
+          embodiments: result.score.breakdown.embodiments,
+          clarity: result.score.breakdown.clarity
+        };
+        setQualityScore(score);
+        if (result.intake.status === 'ready_for_payment') {
+          toast.success('Quality check passed! Ready for payment.');
+        } else {
+          toast.info('Quality score updated. Address the suggestions to improve.');
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to score intake');
+    } finally {
+      setScoringLoading(false);
+    }
+  }, [intakeId, intakeApi]);
+
   return {
     step,
     totalSteps,
@@ -279,6 +332,7 @@ export function useProvisionalWizard({ filingId, onComplete }: UseProvisionalWiz
     intakeId,
     loading,
     saving,
+    scoringLoading,
     qualityScore,
     isComplete: step === totalSteps - 1,
     isQualityPassing: qualityScore ? qualityScore.overall >= MIN_QUALITY_SCORE : false,
@@ -289,6 +343,7 @@ export function useProvisionalWizard({ filingId, onComplete }: UseProvisionalWiz
     goToStep,
     saveProgress,
     deleteIntake,
-    getFollowupPrompts
+    getFollowupPrompts,
+    scoreIntake
   };
 }
