@@ -10,7 +10,8 @@ import {
   Bell,
   User,
   BarChart3,
-  FileCheck
+  FileCheck,
+  FolderOpen,
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,6 +36,7 @@ import { Button } from "@/components/ui/button";
 const mainItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
   { title: "My IP Filings", url: "/filings", icon: FileText },
+  { title: "Documents", url: "/documents", icon: FolderOpen },
   { title: "New Filing", url: "/filing/wizard", icon: Plus },
   { title: "Cost Estimator", url: "/cost-calculator", icon: Calculator },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },

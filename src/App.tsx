@@ -42,6 +42,7 @@ import Privacy from "./pages/Privacy";
 import RefundPolicy from "./pages/RefundPolicy";
 import DataProcessingAgreement from "./pages/DataProcessingAgreement";
 import PatentResult from "./pages/PatentResult";
+import DocumentsDashboard from "./pages/DocumentsDashboard";
 
 const queryClient = new QueryClient();
 
@@ -128,6 +129,21 @@ const AppContent = () => {
                       <AppSidebar />
                       <main className="flex-1 p-6 bg-background">
                         <FilingsDashboard />
+                      </main>
+                    </div>
+                  </SidebarProvider>
+                </LegalConsentGate>
+              </AuthGuard>
+            } />
+
+            <Route path="/documents" element={
+              <AuthGuard>
+                <LegalConsentGate>
+                  <SidebarProvider>
+                    <div className="flex min-h-screen w-full">
+                      <AppSidebar />
+                      <main className="flex-1 p-6 bg-background">
+                        <DocumentsDashboard />
                       </main>
                     </div>
                   </SidebarProvider>
