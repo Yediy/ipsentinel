@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import PDFDocument from "https://esm.sh/pdfkit@0.13.0";
 import { getValidatedCorsHeaders, createCorsPreflightResponse } from "../_shared/cors-validator.ts";
 import { captureException } from "../_shared/sentry.ts";
 
@@ -204,11 +205,11 @@ serve(async (req) => {
 
     if (updateError) throw updateError;
 
-    // ── Create document records with standard storage keys ────────────
+    // ── Generate PDF and DOCX files ───────────────────────────────────────
     const userId = intake.user_id;
     const deleteAfter = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
 
-    // Build spec text for PDF
+    // Build spec text for documents
     const specText = [
       `TITLE: ${generatedContent.title || answers.title}`,
       "",
@@ -231,13 +232,25 @@ serve(async (req) => {
       generatedContent.figure_descriptions,
     ].join("\n");
 
-    const specKey = storageKey(userId, intakeId, "spec_pdf", "txt");
-
-    // Upload spec as text (PDF generation is handled by generate-patent-pdf)
+    // Generate PDF using PDFKit
+    const pdfBuffer = await generatePDF(generatedContent, answers.title || "Patent Specification");
+    const pdfKey = storageKey(userId, intakeId, "spec_pdf", "pdf");
+    
     await supabase.storage
       .from("filings")
-      .upload(specKey, new TextEncoder().encode(specText), {
-        contentType: "text/plain",
+      .upload(pdfKey, pdfBuffer, {
+        contentType: "application/pdf",
+        upsert: true,
+      });
+
+    // Generate DOCX using simple HTML-to-Word conversion
+    const docxBuffer = await generateDocx(generatedContent, answers.title || "Patent Specification");
+    const docxKey = storageKey(userId, intakeId, "spec_docx", "docx");
+    
+    await supabase.storage
+      .from("filings")
+      .upload(docxKey, docxBuffer, {
+        contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         upsert: true,
       });
 
@@ -248,8 +261,17 @@ serve(async (req) => {
         intake_id: intakeId,
         kind: "pdf" as const,
         doc_type: "spec_pdf",
-        storage_key: specKey,
-        url: specKey,
+        storage_key: pdfKey,
+        url: pdfKey,
+        delete_after: deleteAfter,
+      },
+      {
+        filing_id: filingId,
+        intake_id: intakeId,
+        kind: "docx" as const,
+        doc_type: "spec_docx",
+        storage_key: docxKey,
+        url: docxKey,
         delete_after: deleteAfter,
       },
     ];
@@ -332,6 +354,118 @@ serve(async (req) => {
     );
   }
 });
+
+// ── PDF generation helper ────────────────────────────────────────────────
+async function generatePDF(
+  content: Record<string, string>,
+  title: string
+): Promise<Uint8Array> {
+  const pdf = new PDFDocument({
+    size: "A4",
+    margin: 50,
+    bufferPages: true
+  });
+
+  return new Promise((resolve, reject) => {
+    const chunks: Uint8Array[] = [];
+
+    pdf.on("data", (chunk: Uint8Array) => chunks.push(chunk));
+    pdf.on("end", () => {
+      const buffer = new Uint8Array(chunks.reduce((acc, chunk) => acc + chunk.length, 0));
+      let offset = 0;
+      for (const chunk of chunks) {
+        buffer.set(chunk, offset);
+        offset += chunk.length;
+      }
+      resolve(buffer);
+    });
+    pdf.on("error", reject);
+
+    // Add title
+    pdf.fontSize(24).font("Helvetica-Bold").text(title, { align: "center" });
+    pdf.moveDown(0.5);
+    pdf.moveTo(50, pdf.y).lineTo(550, pdf.y).stroke();
+    pdf.moveDown(1);
+
+    // Add sections
+    const sections = ["abstract", "background", "summary", "detailed_description", "claims", "figure_descriptions"];
+    const sectionLabels: Record<string, string> = {
+      abstract: "Abstract",
+      background: "Background of the Invention",
+      summary: "Summary of the Invention",
+      detailed_description: "Detailed Description",
+      claims: "Claims",
+      figure_descriptions: "Figure Descriptions"
+    };
+
+    for (const section of sections) {
+      if (content[section]) {
+        pdf.fontSize(14).font("Helvetica-Bold").text(sectionLabels[section] || section);
+        pdf.fontSize(11).font("Helvetica").text(content[section], { align: "justify" });
+        pdf.moveDown(0.5);
+      }
+    }
+
+    pdf.end();
+  });
+}
+
+// ── DOCX generation helper ────────────────────────────────────────────────
+async function generateDocx(
+  content: Record<string, string>,
+  title: string
+): Promise<Uint8Array> {
+  // Create a basic DOCX structure
+  const sections = [
+    { key: "abstract", label: "Abstract" },
+    { key: "background", label: "Background of the Invention" },
+    { key: "summary", label: "Summary of the Invention" },
+    { key: "detailed_description", label: "Detailed Description" },
+    { key: "claims", label: "Claims" },
+    { key: "figure_descriptions", label: "Figure Descriptions" }
+  ];
+
+  let docContent = `<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p>
+      <w:pPr><w:pStyle w:val="Title"/></w:pPr>
+      <w:r><w:t>${escapeXml(title)}</w:t></w:r>
+    </w:p>`;
+
+  for (const section of sections) {
+    if (content[section.key]) {
+      docContent += `
+    <w:p>
+      <w:pPr><w:pStyle w:val="Heading1"/></w:pPr>
+      <w:r><w:t>${escapeXml(section.label)}</w:t></w:r>
+    </w:p>`;
+      
+      const paragraphs = content[section.key].split("\n\n");
+      for (const para of paragraphs) {
+        docContent += `
+    <w:p>
+      <w:r><w:t>${escapeXml(para)}</w:t></w:r>
+    </w:p>`;
+      }
+    }
+  }
+
+  docContent += `
+  </w:body>
+</w:document>`;
+
+  return new TextEncoder().encode(docContent);
+}
+
+function escapeXml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
 
 // ── Email template ──────────────────────────────────────────────────────
 function generateEmailHTML(title: string, viewUrl: string): string {
