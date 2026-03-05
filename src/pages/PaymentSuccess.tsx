@@ -96,12 +96,21 @@ const PaymentSuccess = () => {
                 Home
               </Link>
             </Button>
-            <Button asChild className="flex-1">
-              <Link to="/filings">
-                <FileText className="w-4 h-4 mr-2" />
-                View Filings
-              </Link>
-            </Button>
+            {searchParams.get('type') === 'provisional' ? (
+              <Button asChild className="flex-1">
+                <Link to="/provisional">
+                  <FileText className="w-4 h-4 mr-2" />
+                  View Patent Status
+                </Link>
+              </Button>
+            ) : (
+              <Button asChild className="flex-1">
+                <Link to="/filings">
+                  <FileText className="w-4 h-4 mr-2" />
+                  View Filings
+                </Link>
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

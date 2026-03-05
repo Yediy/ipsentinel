@@ -36,6 +36,7 @@ import { Button } from "@/components/ui/button";
 const mainItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
   { title: "My IP Filings", url: "/filings", icon: FileText },
+  { title: "Provisional Patent", url: "/provisional", icon: FileCheck },
   { title: "Documents", url: "/documents", icon: FolderOpen },
   { title: "New Filing", url: "/filing/wizard", icon: Plus },
   { title: "Cost Estimator", url: "/cost-calculator", icon: Calculator },

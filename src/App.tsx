@@ -43,6 +43,7 @@ import RefundPolicy from "./pages/RefundPolicy";
 import DataProcessingAgreement from "./pages/DataProcessingAgreement";
 import PatentResult from "./pages/PatentResult";
 import DocumentsDashboard from "./pages/DocumentsDashboard";
+import ProvisionalPatent from "./pages/ProvisionalPatent";
 
 const queryClient = new QueryClient();
 
@@ -65,6 +66,20 @@ const AppContent = () => {
             <Route path="/drawings-demo" element={<DrawingsDemo />} />
             <Route path="/wizard" element={<IPGenieWizard />} />
             <Route path="/calculator" element={<IPGenieCostCalculator />} />
+            <Route path="/provisional" element={
+              <AuthGuard>
+                <LegalConsentGate>
+                  <SidebarProvider>
+                    <div className="flex min-h-screen w-full">
+                      <AppSidebar />
+                      <main className="flex-1 p-6 bg-background">
+                        <ProvisionalPatent />
+                      </main>
+                    </div>
+                  </SidebarProvider>
+                </LegalConsentGate>
+              </AuthGuard>
+            } />
             <Route path="/prior-art" element={<PriorArtSearch />} />
             <Route path="/tm-status" element={<TrademarkStatus />} />
             
