@@ -91,10 +91,10 @@ const Index = () => {
             <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
         </Link>
-        <Link to="/filing/wizard">
+        <Link to="/provisional">
           <Button size="lg" variant="outline" className="text-white border-white hover:bg-white hover:text-primary text-lg px-8 py-4">
             <Zap className="mr-2 h-5 w-5" />
-            Create New Filing
+            Provisional Patent
             <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
         </Link>
