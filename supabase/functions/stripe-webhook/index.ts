@@ -125,12 +125,11 @@ serve(async (req: Request) => {
 
             // Trigger document generation
             try {
-              const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
               await fetch(`${SUPABASE_URL}/functions/v1/generate-provisional`, {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
-                  Authorization: `Bearer ${anonKey}`,
+                  Authorization: `Bearer ${SUPABASE_SERVICE_ROLE}`,
                 },
                 body: JSON.stringify({ intake_id, filing_id }),
               });
