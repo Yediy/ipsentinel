@@ -18,37 +18,57 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const now = new Date().toISOString();
 
-    // Delete expired intakes
-    const { data: deletedIntakes, error: intakesError } = await supabase
+    // Find expired intakes that haven't been cleaned yet
+    const { data: expiredIntakes, error: fetchErr } = await supabase
       .from("intakes")
-      .delete()
+      .select("id, user_id")
       .lt("delete_after", now)
-      .select("id");
+      .neq("status", "deleted");
 
-    if (intakesError) {
-      console.error("Error deleting intakes:", intakesError);
-    } else {
-      console.log(`Deleted ${deletedIntakes?.length || 0} expired intakes`);
+    if (fetchErr) {
+      console.error("Error fetching expired intakes:", fetchErr);
+      throw fetchErr;
     }
 
-    // Delete expired documents
-    const { data: deletedDocs, error: docsError } = await supabase
-      .from("documents")
-      .delete()
-      .lt("delete_after", now)
-      .not("delete_after", "is", null)
-      .select("id");
+    let cleanedCount = 0;
 
-    if (docsError) {
-      console.error("Error deleting documents:", docsError);
-    } else {
-      console.log(`Deleted ${deletedDocs?.length || 0} expired documents`);
+    for (const intake of expiredIntakes || []) {
+      try {
+        // 1. Find and delete storage objects
+        const { data: docs } = await supabase
+          .from("documents")
+          .select("id, storage_key")
+          .eq("intake_id", intake.id);
+
+        if (docs && docs.length > 0) {
+          const storageKeys = docs.map((d: any) => d.storage_key).filter(Boolean);
+          if (storageKeys.length > 0) {
+            await supabase.storage.from("filings").remove(storageKeys);
+          }
+          // Delete document rows
+          await supabase.from("documents").delete().eq("intake_id", intake.id);
+        }
+
+        // 2. Clean up generation jobs
+        await supabase.from("generation_jobs").delete().eq("intake_id", intake.id);
+
+        // 3. Wipe answers and set status = deleted (keep row for payment ledger)
+        await supabase
+          .from("intakes")
+          .update({ answers_json: {}, status: "deleted" })
+          .eq("id", intake.id);
+
+        cleanedCount++;
+      } catch (err) {
+        console.error(`Error cleaning intake ${intake.id}:`, err);
+      }
     }
+
+    console.log(`Cleaned ${cleanedCount} expired intakes`);
 
     return new Response(JSON.stringify({
       success: true,
-      deleted_intakes: deletedIntakes?.length || 0,
-      deleted_documents: deletedDocs?.length || 0
+      cleaned_intakes: cleanedCount,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200
