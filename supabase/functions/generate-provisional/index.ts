@@ -137,6 +137,15 @@ serve(async (req) => {
 
   if (req.method === "OPTIONS") return createCorsPreflightResponse(origin);
 
+  // ── Auth: only allow calls with the service role key ────────────────
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader || authHeader !== `Bearer ${SUPABASE_SERVICE_KEY}`) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
   let intakeId: string | undefined;
   let filingId: string | undefined;
