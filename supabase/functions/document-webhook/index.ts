@@ -29,8 +29,13 @@ Deno.serve(async (req) => {
     const webhookSecret = req.headers.get('x-webhook-secret');
     
     console.log('Webhook received:', {
-      headers: Object.fromEntries(req.headers.entries()),
-      body
+      headers: {
+        'content-type': req.headers.get('content-type'),
+        'origin': req.headers.get('origin'),
+        'x-client-info': req.headers.get('x-client-info'),
+      },
+      filing_id: body?.filing_id,
+      kind: body?.kind,
     });
 
     // Validate webhook secret for security
