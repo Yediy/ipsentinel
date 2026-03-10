@@ -158,7 +158,7 @@ serve(async (req) => {
     });
     
     return new Response(
-      JSON.stringify({ error: error?.message || 'Payment creation failed' }),
+      JSON.stringify({ error: 'Payment creation failed' }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500,

@@ -136,6 +136,6 @@ serve(async (req) => {
   } catch (error: any) {
     console.error("Intake documents error:", error);
     await captureException(error, { tags: { function: "intake-documents" }, request: req });
-    return json({ error: error?.message || "Internal error" }, 500, corsHeaders);
+    return json({ error: "An internal error occurred" }, 500, corsHeaders);
   }
 });

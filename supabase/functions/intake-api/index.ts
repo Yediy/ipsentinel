@@ -330,6 +330,6 @@ serve(async (req) => {
   } catch (error: any) {
     console.error("Intake API error:", error);
     await captureException(error, { tags: { function: "intake-api" }, request: req });
-    return json({ error: error?.message || "Internal error" }, 500, corsHeaders);
+    return json({ error: "An internal error occurred" }, 500, corsHeaders);
   }
 });

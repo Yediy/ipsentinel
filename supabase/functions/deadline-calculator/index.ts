@@ -95,7 +95,7 @@ serve(async (req) => {
     console.error('Deadline calculation error:', error);
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'Deadline calculation failed',
+        error: 'Deadline calculation failed',
         success: false 
       }),
       {

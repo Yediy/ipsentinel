@@ -98,7 +98,7 @@ serve(async (req) => {
   } catch (error: any) {
     console.error('Error sending welcome email:', error);
     return createSecureResponse(
-      { error: 'Failed to send welcome email', details: error.message },
+      { error: 'Failed to send welcome email' },
       500,
       corsHeaders
     );

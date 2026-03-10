@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
     console.error('Webhook processing error:', error);
     captureException(error, req);
     return new Response(
-      JSON.stringify({ error: 'Internal server error', details: error?.message }),
+      JSON.stringify({ error: 'Internal server error' }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

@@ -205,7 +205,7 @@ serve(async (req) => {
       request: req,
     });
     
-    return new Response(JSON.stringify({ error: error?.message || 'Filing generation failed' }), {
+    return new Response(JSON.stringify({ error: 'Filing generation failed' }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });

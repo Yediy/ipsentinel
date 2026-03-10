@@ -171,7 +171,7 @@ serve(async (req) => {
     console.error('Rate limiting error:', error);
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'Rate limiting check failed',
+        error: 'Rate limiting check failed',
         success: false 
       }),
       {

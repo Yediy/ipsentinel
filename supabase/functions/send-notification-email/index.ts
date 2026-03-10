@@ -148,7 +148,7 @@ serve(async (req) => {
     console.error('Email notification error:', error);
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'Email notification failed',
+        error: 'Email notification failed',
         success: false 
       }),
       {

@@ -161,7 +161,7 @@ serve(async (req) => {
     
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'Trademark API integration failed',
+        error: 'Trademark API integration failed',
         success: false 
       }),
       {

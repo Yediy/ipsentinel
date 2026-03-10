@@ -288,11 +288,10 @@ serve(async (req) => {
     throw new Error('Invalid drawing generation request');
 
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Drawing generation failed';
-    console.error('Drawing generation error:', errorMessage);
+    console.error('Drawing generation error:', error);
     return new Response(
       JSON.stringify({ 
-        error: errorMessage,
+        error: 'Drawing generation failed',
         success: false 
       }),
       {
