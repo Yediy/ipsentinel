@@ -139,7 +139,7 @@ serve(async (req) => {
     });
     
     return new Response(JSON.stringify({ 
-      error: error?.message || 'Unknown error occurred',
+      error: 'An internal error occurred. Please try again.',
       success: false 
     }), {
       status: 500,
