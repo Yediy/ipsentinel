@@ -280,7 +280,7 @@ serve(async (req) => {
     }
     await captureException(error, { tags: { function: "generate-provisional" }, request: req });
     return new Response(
-      JSON.stringify({ error: error?.message || "Generation failed" }),
+      JSON.stringify({ error: "Generation failed" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
     );
   }

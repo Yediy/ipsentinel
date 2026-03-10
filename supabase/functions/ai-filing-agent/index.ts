@@ -139,7 +139,7 @@ serve(async (req) => {
     });
     
     return new Response(JSON.stringify({ 
-      error: error?.message || 'Unknown error occurred',
+      error: 'An internal error occurred. Please try again.',
       success: false 
     }), {
       status: 500,
@@ -291,7 +291,7 @@ async function generatePatentSections(supabase: any, openAIApiKey: string, filin
       console.error(`Error generating ${template.section_type}:`, error);
       sections.push({
         type: template.section_type,
-        content: `Error generating section: ${error?.message || 'Unknown error'}`,
+        content: 'Error generating section. Please try again.',
         error: true
       });
     }

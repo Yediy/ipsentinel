@@ -98,7 +98,7 @@ serve(async (req) => {
     console.error('Drawing upload error:', error);
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'Drawing upload failed',
+        error: 'Drawing upload failed',
         success: false 
       }),
       {

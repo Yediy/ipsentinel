@@ -241,7 +241,7 @@ serve(async (req) => {
     captureException(error, req);
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'Webhook processing failed',
+        error: 'Webhook processing failed',
         received: false 
       }),
       {

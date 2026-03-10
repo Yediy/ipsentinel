@@ -89,7 +89,7 @@ serve(async (req) => {
     console.error('Translation API error:', error);
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'Translation failed',
+        error: 'Translation failed',
         success: false 
       }),
       {

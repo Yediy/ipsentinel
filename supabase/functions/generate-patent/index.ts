@@ -284,7 +284,7 @@ Generate the complete patent application document:`;
     
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'Failed to generate patent',
+        error: 'Failed to generate patent',
         success: false 
       }),
       {
