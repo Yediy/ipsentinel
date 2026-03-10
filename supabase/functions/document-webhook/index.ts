@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
       if (error) {
         console.error('Database error:', error);
         return new Response(
-          JSON.stringify({ error: 'Database insertion failed', details: error.message }), 
+          JSON.stringify({ error: 'Database insertion failed' }), 
           { 
             status: 500, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
