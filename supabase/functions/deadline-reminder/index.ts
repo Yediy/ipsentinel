@@ -56,6 +56,15 @@ serve(async (req) => {
     return createCorsPreflightResponse(origin);
   }
 
+  // Require service-role key authentication (cron job or admin only)
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader || authHeader !== `Bearer ${SUPABASE_SERVICE_ROLE}`) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE, { auth: { persistSession: false } });
 
