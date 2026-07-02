@@ -7,7 +7,7 @@
     <!-- Security Headers -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://m.stripe.network; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self' https://myygzczpldyovvqvbwbk.supabase.co https://api.openai.com https://api.stripe.com https://js.stripe.com; frame-src https://js.stripe.com https://hooks.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self';" />
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
-    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <!-- X-Frame-Options must be sent as an HTTP header (enforced via edge/hosting), not <meta>. -->
     <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
     <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), interest-cohort=()" />

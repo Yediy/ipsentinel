@@ -45,10 +45,23 @@ serve(async (req) => {
     // Require authentication
     const jwt = requireAuth(req);
 
-    const { to, subject, html, filing_id, notification_type }: EmailRequest = await req.json();
-    
+    let payload: Partial<EmailRequest> = {};
+    try {
+      payload = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON body', success: false }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { to, subject, html, filing_id, notification_type } = payload as EmailRequest;
+
     if (!to || !subject || !html) {
-      throw new Error('Missing required email fields: to, subject, html');
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields: to, subject, html', success: false }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Initialize Supabase client
