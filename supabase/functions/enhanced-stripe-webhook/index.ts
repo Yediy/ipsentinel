@@ -30,8 +30,20 @@ serve(async (req) => {
     const signature = req.headers.get('stripe-signature') || '';
     const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET');
 
+    // Reject malformed / non-Stripe requests early with 400 instead of 500
+    if (!body || !signature) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid webhook request: missing body or stripe-signature' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     if (!webhookSecret) {
-      throw new Error('Missing Stripe webhook secret');
+      console.error('STRIPE_WEBHOOK_SECRET is not configured');
+      return new Response(
+        JSON.stringify({ error: 'Webhook not configured' }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Verify webhook signature
